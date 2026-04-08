@@ -1,0 +1,64 @@
+@import "tailwindcss";
+
+@theme {
+  --color-uno-red: #ff3b3b;
+  --color-uno-yellow: #ffcc00;
+  --color-uno-blue: #008cff;
+  --color-uno-green: #37b54a;
+  --color-uno-dark: #121212;
+  --color-uno-accent: #6d28d9;
+}
+
+:root {
+  font-family: 'Outfit', 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  color-scheme: dark;
+  color: #ffffff;
+  background-color: #121212;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+@layer base {
+  body {
+    margin: 0;
+    display: flex;
+    min-height: 100vh;
+    background-color: #121212;
+    overflow-x: hidden;
+  }
+}
+
+@layer utilities {
+  .glass {
+    backdrop-filter: blur(12px);
+    background-color: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  }
+  .glass-dark {
+    backdrop-filter: blur(16px);
+    background-color: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  }
+  .animate-gradient {
+    background-size: 200% 200%;
+    animation: gradient-move 8s ease infinite;
+  }
+}
+
+@keyframes gradient-move {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+#root {
+  width: 100%;
+}
