@@ -90,6 +90,19 @@ export interface AccountDeletionRequest {
   updatedAt?: string;
 }
 
+export interface AdminTransaction {
+  uid: string;
+  id: string;
+  type: string;
+  amount?: number;
+  balanceAfter?: number;
+  claimId?: string | null;
+  timestamp?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  metadata?: Record<string, unknown>;
+}
+
 async function authHeaders() {
   const user = auth.currentUser;
   if (!user) throw new Error('Admin login is required.');
@@ -233,6 +246,32 @@ export function deleteUserForAccountDeletionRequest(requestId: string) {
   return requestJson<{ ok: boolean; request: AccountDeletionRequest }>(`/api/admin/account-deletion-requests/${encodeURIComponent(requestId)}/delete-user`, {
     method: 'POST',
     body: JSON.stringify({}),
+  });
+}
+
+export function listTransactions(filters: {
+  search?: string;
+  type?: string;
+  status?: string;
+  uid?: string;
+  skip?: number;
+  limit?: number;
+} = {}) {
+  const params = new URLSearchParams({
+    search: filters.search || '',
+    type: filters.type || '',
+    status: filters.status || '',
+    uid: filters.uid || '',
+    skip: String(filters.skip || 0),
+    limit: String(filters.limit || 100),
+  });
+  return requestJson<{ ok: boolean; transactions: AdminTransaction[]; total: number; skip: number; limit: number }>(`/api/admin/transactions?${params}`);
+}
+
+export function updateTransaction(uid: string, transactionId: string, patch: { adminStatus?: string; adminNote?: string }) {
+  return requestJson<{ ok: boolean; transaction: AdminTransaction }>(`/api/admin/transactions/${encodeURIComponent(uid)}/${encodeURIComponent(transactionId)}`, {
+    method: 'PATCH',
+    body: JSON.stringify(patch),
   });
 }
 

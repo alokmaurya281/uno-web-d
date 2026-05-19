@@ -344,7 +344,7 @@ function CoinRewardsEditor({ value, onChange }: EditorProps) {
       <Panel title="Rewards">
         <FieldGrid>
           <TextField label="Streak rewards comma-separated" value={(Array.isArray(value.streakRewards) ? value.streakRewards : []).join(',')} onChange={(next) => set('streakRewards', next.split(',').map((entry) => readNumber(entry)).filter((entry) => entry > 0))} />
-          {['dailyMissionBonusReward', 'weeklyMissionBonusReward', 'gameCompleteReward', 'multiplayerWinBonus', 'computerWinBonus', 'firstGameDailyMultiplier', 'rewardedAdCoinReward', 'extraMatchCost', 'suspiciousMinuteThreshold'].map((key) => (
+          {['dailyMissionBonusReward', 'weeklyMissionBonusReward', 'gameCompleteReward', 'multiplayerWinBonus', 'computerWinBonus', 'firstGameDailyMultiplier', 'rewardedAdCoinReward', 'extraMatchCost', 'standardRoomCoinCost', 'largeRoomCoinCost', 'standardRoomWinBonus', 'largeRoomWinBonus', 'suspiciousMinuteThreshold'].map((key) => (
             <NumberField key={key} label={key} value={readNumber(value[key])} onChange={(next) => set(key, next)} />
           ))}
         </FieldGrid>

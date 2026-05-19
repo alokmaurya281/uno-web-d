@@ -18,6 +18,7 @@ import Analytics from './pages/Admin/Analytics';
 import Settings from './pages/Admin/Settings';
 import SupportTickets from './pages/Admin/SupportTickets';
 import AccountDeletionRequests from './pages/Admin/AccountDeletionRequests';
+import Transactions from './pages/Admin/Transactions';
 
 function App() {
   const dispatch = useDispatch();
@@ -75,6 +76,7 @@ function App() {
           <Route path="analytics" element={<Analytics />} />
           <Route path="support" element={<SupportTickets />} />
           <Route path="account-deletion-requests" element={<AccountDeletionRequests />} />
+          <Route path="transactions" element={<Transactions />} />
           <Route path="settings" element={<Settings />} />
         </Route>
 
