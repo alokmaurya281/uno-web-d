@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useCallback, useState, useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -41,7 +41,7 @@ const Login: React.FC = () => {
   const isMounted = useRef(true);
   const redirectChecked = useRef(false);
 
-  const addLog = (message: string, type: LogEntry['type'] = 'info') => {
+  const addLog = useCallback((message: string, type: LogEntry['type'] = 'info') => {
     const entry = {
       timestamp: new Date().toLocaleTimeString(),
       message,
@@ -49,51 +49,13 @@ const Login: React.FC = () => {
     };
     setLogs(prev => [entry, ...prev].slice(0, 50));
     console.log(`[AUTH-DIAGNOSTIC] ${message}`);
-  };
+  }, []);
 
   useEffect(() => {
     return () => { isMounted.current = false; };
   }, []);
 
-  useEffect(() => {
-    if (redirectChecked.current) return;
-    redirectChecked.current = true;
-
-    const completeGoogleRedirect = async () => {
-      try {
-        const result = await getRedirectResult(auth);
-        if (!result || !isMounted.current) return;
-
-        setIsProcessing(true);
-        addLog(`Google redirect success: ${result.user.email}`, 'success');
-        await verifyAdmin(result.user.uid, result.user);
-      } catch (err: unknown) {
-        if (isMounted.current) {
-          setIsProcessing(false);
-          addLog(`Google redirect error: ${errorMessage(err)}`, 'error');
-          setError('Google login failed or cancelled.');
-        }
-      }
-    };
-
-    completeGoogleRedirect();
-  }, []);
-
-  // Global Redirect if isAdmin becomes true
-  useEffect(() => {
-    if (isAdmin) {
-      const target = (location.state as LoginLocationState | null)?.from?.pathname || '/admin';
-      
-      // Use a small timeout to ensure Redux state is settled and logs are visible
-      const timer = setTimeout(() => {
-        navigate(target, { replace: true });
-      }, 500);
-      
-      return () => clearTimeout(timer);
-    }
-  }, [isAdmin, navigate, location.state]);
-
-  const verifyAdmin = async (uid: string, user: FirebaseUser) => {
+  const verifyAdmin = useCallback(async (uid: string, user: FirebaseUser) => {
     if (!isMounted.current) return;
     setIsProcessing(true);
     setError('');
@@ -128,7 +90,45 @@ const Login: React.FC = () => {
       dispatch(setUser({ user: null, isAdmin: false }));
       setIsProcessing(false);
     }
-  };
+  }, [addLog, dispatch]);
+
+  useEffect(() => {
+    if (redirectChecked.current) return;
+    redirectChecked.current = true;
+
+    const completeGoogleRedirect = async () => {
+      try {
+        const result = await getRedirectResult(auth);
+        if (!result || !isMounted.current) return;
+
+        setIsProcessing(true);
+        addLog(`Google redirect success: ${result.user.email}`, 'success');
+        await verifyAdmin(result.user.uid, result.user);
+      } catch (err: unknown) {
+        if (isMounted.current) {
+          setIsProcessing(false);
+          addLog(`Google redirect error: ${errorMessage(err)}`, 'error');
+          setError('Google login failed or cancelled.');
+        }
+      }
+    };
+
+    completeGoogleRedirect();
+  }, [addLog, verifyAdmin]);
+
+  // Global Redirect if isAdmin becomes true
+  useEffect(() => {
+    if (isAdmin) {
+      const target = (location.state as LoginLocationState | null)?.from?.pathname || '/admin';
+      
+      // Use a small timeout to ensure Redux state is settled and logs are visible
+      const timer = setTimeout(() => {
+        navigate(target, { replace: true });
+      }, 500);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [isAdmin, navigate, location.state]);
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();

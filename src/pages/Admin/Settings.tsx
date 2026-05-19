@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Bell, CheckCircle2, ChevronDown, FileJson, Plus, RefreshCw, Save, Send, Sparkles, Trash2 } from 'lucide-react';
 import {
   getConfig,
@@ -48,12 +48,12 @@ const Settings: React.FC = () => {
   const [seasonWarnings, setSeasonWarnings] = useState<ConfigMap[]>([]);
   const [notification, setNotification] = useState({ title: '', body: '', targetEmails: '', inApp: true, push: true, inAppStyle: 'popup' as 'popup' | 'banner' });
 
-  const loadList = async () => {
+  const loadList = useCallback(async () => {
     const response = await listConfigs();
     setConfigs(response.configs);
-  };
+  }, []);
 
-  const loadConfig = async (id = selectedId) => {
+  const loadConfig = useCallback(async (id = selectedId) => {
     setLoading(true);
     setMessage('');
     try {
@@ -67,24 +67,24 @@ const Settings: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [loadList, selectedId]);
 
-  const loadSeasons = async () => {
+  const loadSeasons = useCallback(async () => {
     try {
       const response = await getSeasons();
       setSeasons(response.seasons || []);
     } catch {
       setSeasons([]);
     }
-  };
+  }, []);
 
   useEffect(() => {
     void loadConfig(selectedId);
-  }, [selectedId]);
+  }, [loadConfig, selectedId]);
 
   useEffect(() => {
     void loadSeasons();
-  }, []);
+  }, [loadSeasons]);
 
   const updateSettings = (next: ConfigMap) => {
     setSettings(next);

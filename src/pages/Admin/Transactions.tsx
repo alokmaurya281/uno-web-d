@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { CheckCircle2, Coins, Flag, RefreshCw, Search } from 'lucide-react';
 import { listTransactions, updateTransaction, type AdminTransaction } from '../../services/adminApi';
 
@@ -37,7 +37,7 @@ const Transactions: React.FC = () => {
   const [error, setError] = useState('');
   const [notes, setNotes] = useState<Record<string, string>>({});
 
-  const load = async (nextSkip = 0, append = false) => {
+  const load = useCallback(async (nextSkip = 0, append = false) => {
     setLoading(true);
     setError('');
     try {
@@ -50,12 +50,12 @@ const Transactions: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [search, type, status]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => void load(0, false), 250);
     return () => window.clearTimeout(timer);
-  }, [search, type, status]);
+  }, [load]);
 
   const types = useMemo(() => {
     const found = new Set(transactions.map((entry) => entry.type).filter(Boolean));

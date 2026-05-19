@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   X, 
@@ -11,29 +11,58 @@ import {
   Trash2
 } from 'lucide-react';
 
+interface RoomPlayer {
+  uid?: string;
+  name?: string;
+  isHost?: boolean;
+  status?: string;
+  joinedAt?: number;
+}
+
+interface RoomDetails {
+  id: string;
+  name: string;
+  hostName: string;
+  playerCount: number;
+  maxPlayers: number;
+  status: string;
+  isPrivate: boolean;
+  createdAt: number;
+  gameMode?: string;
+  players?: Record<string, RoomPlayer>;
+  roomCode?: string;
+  hostUid?: string;
+  autoDisposeAt?: number | string;
+}
+
+interface NormalizedRoomPlayer {
+  uid: string;
+  name: string;
+  isHost: boolean;
+  status: string;
+  joinedAt: number;
+}
+
 interface RoomDetailsModalProps {
-  room: {
-    id: string;
-    name: string;
-    hostName: string;
-    playerCount: number;
-    maxPlayers: number;
-    status: string;
-    isPrivate: boolean;
-    createdAt: number;
-    gameMode?: string;
-    players?: any; // To list player details if available
-  } | null;
+  room: RoomDetails | null;
   isOpen: boolean;
   onClose: () => void;
 }
 
 const RoomDetailsModal: React.FC<RoomDetailsModalProps> = ({ room, isOpen, onClose }) => {
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [isOpen]);
+
   if (!room) return null;
 
   // Real player list from RTDB players object
-  const players = room.players
-    ? Object.values(room.players).map((p: any) => ({
+  const players: NormalizedRoomPlayer[] = room.players
+    ? Object.values(room.players).map((p) => ({
         uid: p.uid || '',
         name: p.name || 'Unknown',
         isHost: !!p.isHost,
@@ -43,7 +72,7 @@ const RoomDetailsModal: React.FC<RoomDetailsModalProps> = ({ room, isOpen, onClo
     : [];
 
   // Real elapsed time
-  const elapsedMs = room.createdAt ? Date.now() - room.createdAt : 0;
+  const elapsedMs = room.createdAt ? now - room.createdAt : 0;
   const elapsedMin = Math.floor(elapsedMs / 60000);
   const elapsedSec = Math.floor((elapsedMs % 60000) / 1000);
   const elapsedStr = room.createdAt ? `${elapsedMin}m ${elapsedSec}s` : 'Unknown';
@@ -138,7 +167,7 @@ const RoomDetailsModal: React.FC<RoomDetailsModalProps> = ({ room, isOpen, onClo
                 <div className="col-span-2 py-10 text-center text-gray-600 font-bold text-xs uppercase tracking-widest">
                   No player data available
                 </div>
-              ) : players.map((p: any, i: number) => (
+              ) : players.map((p, i) => (
                 <div key={p.uid || i} className="bg-white/5 rounded-3xl p-5 border border-white/5 flex items-center justify-between group">
                   <div className="flex items-center gap-4">
                     <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-black italic shadow-lg ${
@@ -179,17 +208,17 @@ const RoomDetailsModal: React.FC<RoomDetailsModalProps> = ({ room, isOpen, onClo
                   <div className="space-y-3">
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-500 font-bold">Room Code</span>
-                      <span className="font-black text-white">{(room as any).roomCode || '—'}</span>
+                      <span className="font-black text-white">{room.roomCode || '—'}</span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-500 font-bold">Host UID</span>
-                      <span className="font-mono text-xs text-gray-400">{(room as any).hostUid?.slice(0, 16) || '—'}...</span>
+                      <span className="font-mono text-xs text-gray-400">{room.hostUid?.slice(0, 16) || '—'}...</span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-500 font-bold">Auto-Dispose At</span>
                       <span className="font-black text-uno-yellow">
-                        {(room as any).autoDisposeAt
-                          ? new Date((room as any).autoDisposeAt).toLocaleString()
+                        {room.autoDisposeAt
+                          ? new Date(room.autoDisposeAt).toLocaleString()
                           : '—'}
                       </span>
                     </div>

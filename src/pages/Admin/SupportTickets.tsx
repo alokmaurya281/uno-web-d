@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { MessageSquare, RefreshCw, Send } from 'lucide-react';
 import { listSupportTickets, updateSupportTicket, type SupportTicket } from '../../services/adminApi';
 
@@ -16,7 +16,7 @@ const SupportTickets: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     setMessage('');
     try {
@@ -31,11 +31,11 @@ const SupportTickets: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [status]);
 
   useEffect(() => {
     void load();
-  }, [status]);
+  }, [load]);
 
   const saveTicket = async (nextStatus?: 'open' | 'pending' | 'closed') => {
     if (!selected) return;

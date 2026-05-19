@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Ban, CheckCircle2, Coins, RefreshCw, Search, Shield, UserCog } from 'lucide-react';
 import { listUsers, updateUser, type AdminUser } from '../../services/adminApi';
 import UserProfileModal from '../../components/Admin/UserProfileModal';
@@ -12,7 +12,7 @@ const UsersManagement: React.FC = () => {
   const [error, setError] = useState('');
   const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
 
-  const load = async (nextSkip = 0, append = false) => {
+  const load = useCallback(async (nextSkip = 0, append = false) => {
     setLoading(true);
     setError('');
     try {
@@ -25,12 +25,12 @@ const UsersManagement: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [search]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => void load(0, false), 250);
     return () => window.clearTimeout(timer);
-  }, [search]);
+  }, [load]);
 
   const patchUser = async (user: AdminUser, patch: Partial<AdminUser>) => {
     const response = await updateUser(user.uid, patch);
