@@ -56,6 +56,7 @@ export interface AdminSeason {
   endsAt?: string;
   rewards?: Array<Record<string, unknown>>;
   missions?: Array<Record<string, unknown>>;
+  rewardWarnings?: Array<Record<string, unknown>>;
   [key: string]: unknown;
 }
 

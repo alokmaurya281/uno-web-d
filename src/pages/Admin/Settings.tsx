@@ -45,6 +45,7 @@ const Settings: React.FC = () => {
   const [message, setMessage] = useState('');
   const [seasons, setSeasons] = useState<AdminSeason[]>([]);
   const [selectedSeason, setSelectedSeason] = useState(0);
+  const [seasonWarnings, setSeasonWarnings] = useState<ConfigMap[]>([]);
   const [notification, setNotification] = useState({ title: '', body: '', targetEmails: '', inApp: true, push: true, inAppStyle: 'popup' as 'popup' | 'banner' });
 
   const loadList = async () => {
@@ -139,7 +140,9 @@ const Settings: React.FC = () => {
       const next = [...seasons];
       next[selectedSeason] = response.season;
       setSeasons(next);
-      setMessage('Season saved.');
+      const warnings = asList(response.season.rewardWarnings);
+      setSeasonWarnings(warnings);
+      setMessage(warnings.length > 0 ? `Season saved with ${warnings.length} reward replacement warning(s).` : 'Season saved.');
     } catch (err) {
       setMessage(err instanceof Error ? err.message : 'Season save failed.');
     } finally {
@@ -216,13 +219,14 @@ const Settings: React.FC = () => {
         <NotificationPanel notification={notification} setNotification={setNotification} sendCurrentNotification={sendCurrentNotification} />
         <section className="rounded-lg border border-white/10 bg-white/[0.03] p-5">
           <h2 className="mb-4 flex items-center gap-2 text-lg font-black"><Sparkles className="text-uno-blue" /> UNO Pass Seasons</h2>
-          <SeasonEditor
-            seasons={seasons}
-            selectedSeason={selectedSeason}
-            setSelectedSeason={setSelectedSeason}
-            setSeasons={setSeasons}
-            saveCurrentSeason={saveCurrentSeason}
-          />
+            <SeasonEditor
+              seasons={seasons}
+              selectedSeason={selectedSeason}
+              setSelectedSeason={setSelectedSeason}
+              setSeasons={setSeasons}
+              saveCurrentSeason={saveCurrentSeason}
+              rewardWarnings={seasonWarnings}
+            />
           <button onClick={() => void transitionPass()} className="mt-4 rounded-lg bg-white/5 px-4 py-3 text-xs font-black uppercase tracking-widest hover:bg-white/10">
             Run Season Transition
           </button>
@@ -482,12 +486,13 @@ function SpinnerSegmentsEditor({ rows, onChange }: { rows: ConfigMap[]; onChange
   );
 }
 
-function SeasonEditor({ seasons, selectedSeason, setSelectedSeason, setSeasons, saveCurrentSeason }: {
+function SeasonEditor({ seasons, selectedSeason, setSelectedSeason, setSeasons, saveCurrentSeason, rewardWarnings }: {
   seasons: AdminSeason[];
   selectedSeason: number;
   setSelectedSeason: (index: number) => void;
   setSeasons: (seasons: AdminSeason[]) => void;
   saveCurrentSeason: (season: AdminSeason) => Promise<void>;
+  rewardWarnings: ConfigMap[];
 }) {
   const season = seasons[selectedSeason] || { seasonId: `season_${selectedSeason + 1}`, title: 'New Season', rewards: [], missions: [] };
   const rewards = asList(season.rewards);
@@ -518,6 +523,21 @@ function SeasonEditor({ seasons, selectedSeason, setSelectedSeason, setSeasons, 
         <TextField label="Ends At" value={readString(season.endsAt)} onChange={(next) => set('endsAt', next)} />
       </FieldGrid>
       <SeasonRows title="Rewards" rows={rewards} keys={['level', 'track', 'type', 'amount', 'label']} onChange={(rows) => set('rewards', rows)} />
+      {rewardWarnings.length > 0 && (
+        <div className="rounded-lg border border-amber-400/30 bg-amber-500/10 p-3 text-xs text-amber-100">
+          <p className="mb-2 font-black uppercase tracking-widest">Reward replacements applied</p>
+          <div className="space-y-1">
+            {rewardWarnings.map((warning, index) => {
+              const replacement = asRecord(warning.replacement);
+              return (
+                <p key={index}>
+                  Level {readNumber(warning.level)} {readString(warning.track, 'free')}: {readString(warning.itemId, 'missing item')} was disabled or missing, replaced with {readNumber(replacement.amount, 100)} coins.
+                </p>
+              );
+            })}
+          </div>
+        </div>
+      )}
       <SeasonRows title="Missions" rows={missions} keys={['id', 'title', 'type', 'target', 'xp', 'sortOrder']} onChange={(rows) => set('missions', rows)} />
       <button onClick={() => void saveCurrentSeason(season)} className="inline-flex items-center gap-2 rounded-lg bg-uno-blue px-4 py-3 text-xs font-black uppercase tracking-widest text-white">
         <Save size={16} /> Save Season
