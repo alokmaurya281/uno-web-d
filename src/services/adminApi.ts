@@ -59,6 +59,37 @@ export interface AdminSeason {
   [key: string]: unknown;
 }
 
+export interface SupportTicket {
+  _id?: string;
+  id?: string;
+  uid: string;
+  userName?: string;
+  userEmail?: string | null;
+  category: string;
+  subject: string;
+  message: string;
+  status: 'open' | 'pending' | 'closed';
+  priority?: string;
+  replies?: Array<{ message: string; authorName?: string; createdAt?: string }>;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface AccountDeletionRequest {
+  _id?: string;
+  id?: string;
+  email: string;
+  uid?: string | null;
+  reason?: string;
+  status: 'open' | 'reviewing' | 'deleted' | 'rejected';
+  notes?: string;
+  deletedUid?: string | null;
+  processedByName?: string | null;
+  processedAt?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 async function authHeaders() {
   const user = auth.currentUser;
   if (!user) throw new Error('Admin login is required.');
@@ -74,6 +105,18 @@ async function requestJson<T>(path: string, options: RequestInit = {}): Promise<
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...options,
     headers: { ...headers, ...(options.headers || {}) },
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok || data.ok === false) {
+    throw new Error(data.error || `Request failed: ${response.status}`);
+  }
+  return data as T;
+}
+
+async function publicRequestJson<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    ...options,
+    headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
   });
   const data = await response.json().catch(() => ({}));
   if (!response.ok || data.ok === false) {
@@ -149,6 +192,47 @@ export function sendNotification(payload: {
   return requestJson<{ ok: boolean; targetUserCount: number; tokenCount: number; successCount: number; failureCount: number }>('/api/admin/notifications/send', {
     method: 'POST',
     body: JSON.stringify(payload),
+  });
+}
+
+export function listSupportTickets(status = '', skip = 0, limit = 50) {
+  const params = new URLSearchParams({ status, skip: String(skip), limit: String(limit) });
+  return requestJson<{ ok: boolean; tickets: SupportTicket[]; total: number; skip: number; limit: number }>(`/api/admin/support-tickets?${params}`);
+}
+
+export function updateSupportTicket(ticketId: string, patch: { status?: 'open' | 'pending' | 'closed'; reply?: string }) {
+  return requestJson<{ ok: boolean; ticket: SupportTicket }>(`/api/admin/support-tickets/${encodeURIComponent(ticketId)}`, {
+    method: 'PATCH',
+    body: JSON.stringify(patch),
+  });
+}
+
+export function createAccountDeletionRequest(payload: { email: string; uid?: string; reason?: string }) {
+  const user = auth.currentUser;
+  if (!user) throw new Error('Verify with Firebase before requesting account deletion.');
+  return getIdToken(user).then((token) => publicRequestJson<{ ok: boolean; request: AccountDeletionRequest }>('/api/account-deletion-requests', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(payload),
+  }));
+}
+
+export function listAccountDeletionRequests(status = '', skip = 0, limit = 50) {
+  const params = new URLSearchParams({ status, skip: String(skip), limit: String(limit) });
+  return requestJson<{ ok: boolean; requests: AccountDeletionRequest[]; total: number; skip: number; limit: number }>(`/api/admin/account-deletion-requests?${params}`);
+}
+
+export function updateAccountDeletionRequest(requestId: string, patch: { status?: AccountDeletionRequest['status']; notes?: string }) {
+  return requestJson<{ ok: boolean; request: AccountDeletionRequest }>(`/api/admin/account-deletion-requests/${encodeURIComponent(requestId)}`, {
+    method: 'PATCH',
+    body: JSON.stringify(patch),
+  });
+}
+
+export function deleteUserForAccountDeletionRequest(requestId: string) {
+  return requestJson<{ ok: boolean; request: AccountDeletionRequest }>(`/api/admin/account-deletion-requests/${encodeURIComponent(requestId)}/delete-user`, {
+    method: 'POST',
+    body: JSON.stringify({}),
   });
 }
 

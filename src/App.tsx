@@ -16,6 +16,8 @@ import UsersManagement from './pages/Admin/UsersManagement';
 import RoomsManagement from './pages/Admin/RoomsManagement';
 import Analytics from './pages/Admin/Analytics';
 import Settings from './pages/Admin/Settings';
+import SupportTickets from './pages/Admin/SupportTickets';
+import AccountDeletionRequests from './pages/Admin/AccountDeletionRequests';
 
 function App() {
   const dispatch = useDispatch();
@@ -54,6 +56,7 @@ function App() {
         {/* Main Routes */}
         <Route path="/" element={<Home />} />
         <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+        <Route path="/terms-of-service" element={<PrivacyPolicy />} />
         <Route path="/uno-delete" element={<AccountDeletion />} />
         <Route path="/admin-login" element={<Login />} />
         
@@ -70,6 +73,8 @@ function App() {
           <Route path="users" element={<UsersManagement />} />
           <Route path="rooms" element={<RoomsManagement />} />
           <Route path="analytics" element={<Analytics />} />
+          <Route path="support" element={<SupportTickets />} />
+          <Route path="account-deletion-requests" element={<AccountDeletionRequests />} />
           <Route path="settings" element={<Settings />} />
         </Route>
 

@@ -244,6 +244,8 @@ function StructuredConfigEditor({ id, value, onChange }: { id: string; value: Co
 function AppSettingsEditor({ value, onChange }: EditorProps) {
   const featureFlags = asRecord(value.featureFlags);
   const supportLinks = asRecord(value.supportLinks);
+  const supportSettings = asRecord(value.supportSettings);
+  const achievementSettings = asRecord(value.achievementSettings);
   const friendSettings = asRecord(value.friendSettings);
   const giftSettings = asRecord(value.giftSettings);
   const set = (key: string, next: unknown) => onChange({ ...value, [key]: next });
@@ -269,10 +271,22 @@ function AppSettingsEditor({ value, onChange }: EditorProps) {
       </Panel>
 
       <Panel title="Support links">
+        <Toggle checked={readBool(supportSettings.enabled, true)} label="support tickets enabled" onChange={(next) => setNested('supportSettings', 'enabled', next)} />
         <FieldGrid>
           {['helpCenter', 'contactUs', 'reportProblem', 'privacyPolicy', 'termsOfService'].map((key) => (
             <TextField key={key} label={key} value={readString(supportLinks[key])} onChange={(next) => setNested('supportLinks', key, next)} />
           ))}
+        </FieldGrid>
+      </Panel>
+
+      <Panel title="Achievement settings">
+        <ToggleGrid>
+          {['enabled', 'popupsEnabled', 'rewardClaimingEnabled', 'secretRevealEnabled', 'animationsEnabled'].map((key) => (
+            <Toggle key={key} label={key} checked={readBool(achievementSettings[key], true)} onChange={(next) => setNested('achievementSettings', key, next)} />
+          ))}
+        </ToggleGrid>
+        <FieldGrid>
+          <NumberField label="Recent achievements count" value={readNumber(achievementSettings.recentAchievementsCount, 3)} onChange={(next) => setNested('achievementSettings', 'recentAchievementsCount', next)} />
         </FieldGrid>
       </Panel>
 
@@ -361,6 +375,7 @@ function CatalogEditor({ value, onChange, id }: EditorProps & { id: string }) {
   const items = asList(value.items);
   const set = (key: string, next: unknown) => onChange({ ...value, [key]: next });
   const updateItem = (index: number, key: string, next: unknown) => set('items', items.map((item, itemIndex) => (itemIndex === index ? { ...item, [key]: next } : item)));
+  const addItem = () => set('items', [...items, { id: `new_${items.length + 1}`, title: 'New item', enabled: true, sortOrder: items.length + 1 }]);
   const itemKeys = id === 'achievements_config'
     ? ['id', 'title', 'category', 'triggerKey', 'targetProgress', 'rewardCoins', 'enabled', 'sortOrder']
     : ['id', 'title', 'category', 'price', 'rarity', 'enabled', 'sortOrder'];
@@ -375,7 +390,7 @@ function CatalogEditor({ value, onChange, id }: EditorProps & { id: string }) {
         </FieldGrid>
       </Panel>
       <Panel title={`Items (${items.length})`}>
-        <button onClick={() => set('items', [...items, { id: `new_${Date.now()}`, title: 'New item', enabled: true, sortOrder: items.length + 1 }])} className="mb-3 inline-flex items-center gap-2 rounded bg-white/10 px-3 py-2 text-xs font-black uppercase tracking-widest hover:bg-white/15">
+        <button onClick={addItem} className="mb-3 inline-flex items-center gap-2 rounded bg-white/10 px-3 py-2 text-xs font-black uppercase tracking-widest hover:bg-white/15">
           <Plus size={14} /> Add Item
         </button>
         <div className="max-h-[560px] space-y-3 overflow-y-auto pr-2">
@@ -420,9 +435,10 @@ type EditorProps = { value: ConfigMap; onChange: (next: ConfigMap) => void };
 
 function MissionListEditor({ title, rows, onChange }: { title: string; rows: ConfigMap[]; onChange: (rows: ConfigMap[]) => void }) {
   const update = (index: number, key: string, next: unknown) => onChange(rows.map((row, rowIndex) => (rowIndex === index ? { ...row, [key]: next } : row)));
+  const addMission = () => onChange([...rows, { id: `mission_${rows.length + 1}`, title: 'New mission', target: 1, reward: 10 }]);
   return (
     <Panel title={title}>
-      <button onClick={() => onChange([...rows, { id: `mission_${Date.now()}`, title: 'New mission', target: 1, reward: 10 }])} className="mb-3 inline-flex items-center gap-2 rounded bg-white/10 px-3 py-2 text-xs font-black uppercase tracking-widest hover:bg-white/15"><Plus size={14} /> Add Mission</button>
+      <button onClick={addMission} className="mb-3 inline-flex items-center gap-2 rounded bg-white/10 px-3 py-2 text-xs font-black uppercase tracking-widest hover:bg-white/15"><Plus size={14} /> Add Mission</button>
       <div className="space-y-3">
         {rows.map((row, index) => (
           <div key={`${row.id || index}`} className="rounded-lg border border-white/10 bg-black/20 p-3">
@@ -441,14 +457,22 @@ function MissionListEditor({ title, rows, onChange }: { title: string; rows: Con
 
 function SpinnerSegmentsEditor({ rows, onChange }: { rows: ConfigMap[]; onChange: (rows: ConfigMap[]) => void }) {
   const update = (index: number, key: string, next: unknown) => onChange(rows.map((row, rowIndex) => (rowIndex === index ? { ...row, [key]: next } : row)));
+  const remove = (index: number) => onChange(rows.filter((_, rowIndex) => rowIndex !== index));
   return (
-    <Panel title="Spinner segments">
+    <Panel title="Spinner wheel rewards">
+      <p className="mb-3 text-xs font-semibold text-gray-500">Configure the exact wheel values used by the app. Type must be coins, solo, or quick.</p>
       <button onClick={() => onChange([...rows, { type: 'coins', amount: 10, label: '+10 COINS' }])} className="mb-3 inline-flex items-center gap-2 rounded bg-white/10 px-3 py-2 text-xs font-black uppercase tracking-widest hover:bg-white/15"><Plus size={14} /> Add Segment</button>
       <div className="grid gap-3 md:grid-cols-2">
         {rows.map((row, index) => (
           <div key={`${row.label || index}`} className="rounded-lg border border-white/10 bg-black/20 p-3">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <span className="text-xs font-black uppercase tracking-widest text-gray-500">Segment {index + 1}</span>
+              <button onClick={() => remove(index)} className="rounded bg-white/5 p-2 text-red-300 hover:bg-red-500/10" title="Remove segment">
+                <Trash2 size={14} />
+              </button>
+            </div>
             <FieldGrid>
-              <TextField label="Type" value={readString(row.type, 'coins')} onChange={(next) => update(index, 'type', next)} />
+              <SelectField label="Type" value={readString(row.type, 'coins')} options={['coins', 'solo', 'quick']} onChange={(next) => update(index, 'type', next)} />
               <NumberField label="Amount" value={readNumber(row.amount, 10)} onChange={(next) => update(index, 'amount', next)} />
               <TextField label="Label" value={readString(row.label)} onChange={(next) => update(index, 'label', next)} />
             </FieldGrid>
@@ -466,7 +490,7 @@ function SeasonEditor({ seasons, selectedSeason, setSelectedSeason, setSeasons, 
   setSeasons: (seasons: AdminSeason[]) => void;
   saveCurrentSeason: (season: AdminSeason) => Promise<void>;
 }) {
-  const season = seasons[selectedSeason] || { seasonId: `season_${Date.now()}`, title: 'New Season', rewards: [], missions: [] };
+  const season = seasons[selectedSeason] || { seasonId: `season_${selectedSeason + 1}`, title: 'New Season', rewards: [], missions: [] };
   const rewards = asList(season.rewards);
   const missions = asList(season.missions);
   const updateSeason = (next: AdminSeason) => {
@@ -475,13 +499,17 @@ function SeasonEditor({ seasons, selectedSeason, setSelectedSeason, setSeasons, 
     setSeasons(copy.length ? copy : [next]);
   };
   const set = (key: string, next: unknown) => updateSeason({ ...season, [key]: next });
+  const addSeason = () => {
+    setSeasons([...seasons, { seasonId: `season_${seasons.length + 1}`, title: 'New Season', seasonNumber: seasons.length + 1, rewards: [], missions: [] }]);
+    setSelectedSeason(seasons.length);
+  };
 
   return (
     <div className="space-y-4">
       <select value={selectedSeason} onChange={(event) => setSelectedSeason(Number(event.target.value))} className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none">
         {seasons.map((entry, index) => <option key={entry.seasonId || index} value={index}>{entry.title || entry.seasonId || `Season ${index + 1}`}</option>)}
       </select>
-      <button onClick={() => { setSeasons([...seasons, { seasonId: `season_${Date.now()}`, title: 'New Season', seasonNumber: seasons.length + 1, rewards: [], missions: [] }]); setSelectedSeason(seasons.length); }} className="inline-flex items-center gap-2 rounded bg-white/10 px-3 py-2 text-xs font-black uppercase tracking-widest hover:bg-white/15"><Plus size={14} /> New Season</button>
+      <button onClick={addSeason} className="inline-flex items-center gap-2 rounded bg-white/10 px-3 py-2 text-xs font-black uppercase tracking-widest hover:bg-white/15"><Plus size={14} /> New Season</button>
       <FieldGrid>
         <TextField label="Season ID" value={readString(season.seasonId || season.id)} onChange={(next) => set('seasonId', next)} />
         <TextField label="Title" value={readString(season.title)} onChange={(next) => set('title', next)} />
@@ -581,6 +609,19 @@ function NumberField({ label, value, onChange }: { label: string; value: number;
     <label className="block text-xs font-bold uppercase tracking-widest text-gray-500">
       {label}
       <input type="number" value={value} onChange={(event) => onChange(readNumber(event.target.value))} className="mt-1 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm normal-case tracking-normal text-white outline-none focus:border-uno-red/60" />
+    </label>
+  );
+}
+
+function SelectField({ label, value, options, onChange }: { label: string; value: string; options: string[]; onChange: (next: string) => void }) {
+  return (
+    <label className="block text-xs font-bold uppercase tracking-widest text-gray-500">
+      {label}
+      <select value={value} onChange={(event) => onChange(event.target.value)} className="mt-1 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm normal-case tracking-normal text-white outline-none focus:border-uno-red/60">
+        {options.map((option) => (
+          <option key={option} value={option}>{option}</option>
+        ))}
+      </select>
     </label>
   );
 }

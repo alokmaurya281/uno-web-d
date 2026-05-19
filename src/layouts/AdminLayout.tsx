@@ -9,7 +9,9 @@ import {
   Bell,
   Search,
   Menu,
-  BarChart3
+  BarChart3,
+  MessageSquare,
+  UserX
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useDispatch, useSelector } from 'react-redux';
@@ -41,6 +43,8 @@ const AdminLayout: React.FC = () => {
     { icon: <Users size={20} />, label: 'Users', path: '/admin/users' },
     { icon: <Gamepad2 size={20} />, label: 'Live Rooms', path: '/admin/rooms' },
     { icon: <BarChart3 size={20} />, label: 'Analytics', path: '/admin/analytics' },
+    { icon: <MessageSquare size={20} />, label: 'Support', path: '/admin/support' },
+    { icon: <UserX size={20} />, label: 'Deletion Requests', path: '/admin/account-deletion-requests' },
     { icon: <Settings size={20} />, label: 'Settings', path: '/admin/settings' },
   ];
 

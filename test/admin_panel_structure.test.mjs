@@ -85,7 +85,12 @@ test('settings admin page exposes structured no-json config editors', () => {
   assert.match(settings, /Advanced JSON/);
   assert.match(settings, /giftSettings/);
   assert.match(settings, /friendSettings/);
+  assert.match(settings, /achievementSettings/);
   assert.match(settings, /featureFlags/);
+  assert.match(settings, /Spinner wheel rewards/);
+  assert.match(settings, /SpinnerSegmentsEditor/);
+  assert.match(settings, /SelectField/);
+  assert.match(settings, /requireRewardedAdForExtraSpin/);
 
   assert.match(api, /getSeasons/);
   assert.match(api, /saveSeason/);
