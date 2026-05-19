@@ -351,7 +351,6 @@ function CoinRewardsEditor({ value, onChange }: EditorProps) {
       </Panel>
       <MissionListEditor title="Daily missions" rows={asList(value.dailyMissions)} onChange={(rows) => set('dailyMissions', rows)} />
       <MissionListEditor title="Weekly missions" rows={asList(value.weeklyMissions)} onChange={(rows) => set('weeklyMissions', rows)} />
-      <SpinnerSegmentsEditor rows={asList(value.spinnerSegments)} onChange={(rows) => set('spinnerSegments', rows)} />
     </div>
   );
 }
