@@ -2,10 +2,9 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { useEffect } from 'react';
 import { useDispatch } from 'react-redux';
 import { onAuthStateChanged } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
-import { ref, get } from 'firebase/database';
-import { auth, db, rtdb } from './firebase/config';
+import { auth } from './firebase/config';
 import { setUser, setLoading, logout } from './store/slices/authSlice';
+import { getMe } from './services/adminApi';
 import Home from './pages/Home';
 import AdminLayout from './layouts/AdminLayout';
 import Dashboard from './pages/Admin/Dashboard';
@@ -16,6 +15,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import UsersManagement from './pages/Admin/UsersManagement';
 import RoomsManagement from './pages/Admin/RoomsManagement';
 import Analytics from './pages/Admin/Analytics';
+import Settings from './pages/Admin/Settings';
 
 function App() {
   const dispatch = useDispatch();
@@ -25,31 +25,16 @@ function App() {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         try {
-          let isAdminConfirmed = false;
-          
-          // 1. Try Firestore
-          const userDoc = await getDoc(doc(db, 'users', user.uid));
-          if (userDoc.exists() && userDoc.data()?.isAdmin === true) {
-            isAdminConfirmed = true;
-          }
-
-          // 2. Try RTDB Fallback
-          if (!isAdminConfirmed) {
-            const rtdbRef = ref(rtdb, `users/${user.uid}`);
-            const snapshot = await get(rtdbRef);
-            if (snapshot.exists() && snapshot.val().isAdmin === true) {
-              isAdminConfirmed = true;
-            }
-          }
-
+          const profile = await getMe();
+          const admin = profile.user?.isAdmin === true;
           dispatch(setUser({ 
             user: { 
               uid: user.uid, 
-              email: user.email, 
-              displayName: user.displayName,
-              photoURL: user.photoURL
+              email: profile.user?.email || user.email,
+              displayName: profile.user?.name || user.displayName,
+              photoURL: profile.user?.avatarUrl || user.photoURL
             }, 
-            isAdmin: isAdminConfirmed 
+            isAdmin: admin
           }));
         } catch (err) {
           console.error("Auth persistence error:", err);
@@ -85,7 +70,7 @@ function App() {
           <Route path="users" element={<UsersManagement />} />
           <Route path="rooms" element={<RoomsManagement />} />
           <Route path="analytics" element={<Analytics />} />
-          <Route path="settings" element={<div className="p-8"><h1 className="text-3xl font-black">Settings</h1><p className="text-gray-500 mt-2">Coming Soon...</p></div>} />
+          <Route path="settings" element={<Settings />} />
         </Route>
 
         {/* Fallback */}

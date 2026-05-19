@@ -1,212 +1,173 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  Users, 
-  Gamepad2, 
-  Activity,
-  Clock,
-  Globe,
-  Lock
-} from 'lucide-react';
-import { collection, onSnapshot } from 'firebase/firestore';
-import { ref, onValue } from 'firebase/database';
-import { db, rtdb } from '../../firebase/config';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Activity, Bell, Coins, Database, Gamepad2, PackageCheck, RefreshCw, Shield, ShoppingBag, Trophy, Users, Zap } from 'lucide-react';
+import { getOverview, type AdminUser } from '../../services/adminApi';
 
-interface LiveRoom {
-  id: string;
-  roomCode: string;
-  status: string;
-  hostName: string;
-  playerCount: number;
-  isPublic: boolean;
-  createdAt: number;
+interface Overview {
+  users?: { total?: number; admins?: number; banned?: number };
+  games?: { histories?: number };
+  economy?: { coins?: number; totalScore?: number };
+  live?: { rooms?: number; onlineUsers?: number; sockets?: number; waitingRooms?: number; playingRooms?: number };
+  domainCounts?: Record<string, number>;
+  recentUsers?: AdminUser[];
 }
 
+const numberText = (value: unknown) => Number(value || 0).toLocaleString();
+
 const Dashboard: React.FC = () => {
+  const [overview, setOverview] = useState<Overview>({});
   const [loading, setLoading] = useState(true);
-  const [counts, setCounts] = useState({
-    players: 0,
-    totalRoomCodes: 0,
-    activeRooms: 0,
-    activePlayers: 0
-  });
-  const [liveRooms, setLiveRooms] = useState<LiveRoom[]>([]);
+  const [error, setError] = useState('');
+
+  const load = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const response = await getOverview();
+      setOverview(response.overview as Overview);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load overview.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    // 1. Listen to Total Players (Firestore 'users' collection)
-    const unsubUsers = onSnapshot(collection(db, 'users'), (snapshot) => {
-      setCounts(prev => ({ ...prev, players: snapshot.size }));
-    });
-
-    // 2. Listen to Active Rooms + Live Rooms list (RTDB)
-    const roomsRef = ref(rtdb, 'rooms');
-    const unsubRooms = onValue(roomsRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data) {
-        const entries = Object.entries(data) as [string, any][];
-        const roomsList: LiveRoom[] = entries.map(([key, value]) => {
-          const info = value.info || {};
-          const players = value.players || {};
-          const playerList = Object.values(players) as any[];
-          const host = playerList.find((p: any) => p.isHost) || playerList[0];
-          return {
-            id: key,
-            roomCode: info.roomCode || key.slice(0, 6),
-            status: info.status || 'waiting',
-            hostName: host?.name || 'Unknown',
-            playerCount: playerList.length,
-            isPublic: !!info.isPublic,
-            createdAt: info.createdAt || 0,
-          };
-        });
-        
-        const activePlayersCount = entries.reduce((acc, [, v]: [string, any]) => 
-          acc + (v.players ? Object.keys(v.players).length : 0), 0);
-        
-        setCounts(prev => ({
-          ...prev,
-          activeRooms: roomsList.length,
-          activePlayers: activePlayersCount,
-        }));
-        setLiveRooms(roomsList.slice(0, 8)); // Show latest 8
-      } else {
-        setCounts(prev => ({ ...prev, activeRooms: 0, activePlayers: 0 }));
-        setLiveRooms([]);
-      }
-      setLoading(false);
-    });
-
-    // 3. Listen to total room codes (RTDB)
-    const codesRef = ref(rtdb, 'roomCodes');
-    const unsubCodes = onValue(codesRef, (snapshot) => {
-      const data = snapshot.val();
-      setCounts(prev => ({ ...prev, totalRoomCodes: data ? Object.keys(data).length : 0 }));
-    });
-
-    return () => {
-      unsubUsers();
-      unsubRooms();
-      unsubCodes();
-    };
+    void load();
   }, []);
 
-  function timeAgo(ts: number): string {
-    if (!ts) return '—';
-    const diff = Date.now() - ts;
-    const mins = Math.floor(diff / 60000);
-    if (mins < 1) return 'Just now';
-    if (mins < 60) return `${mins}m ago`;
-    const hrs = Math.floor(mins / 60);
-    if (hrs < 24) return `${hrs}h ago`;
-    return `${Math.floor(hrs / 24)}d ago`;
-  }
+  const cards = useMemo(() => [
+    { label: 'Players', value: overview.users?.total, icon: <Users size={22} />, tone: 'text-uno-blue' },
+    { label: 'Live Rooms', value: overview.live?.rooms, icon: <Gamepad2 size={22} />, tone: 'text-uno-red' },
+    { label: 'Online Users', value: overview.live?.onlineUsers, icon: <Activity size={22} />, tone: 'text-uno-green' },
+    { label: 'Coin Supply', value: overview.economy?.coins, icon: <Coins size={22} />, tone: 'text-uno-yellow' },
+  ], [overview]);
+
+  const dataCoverage = useMemo(() => [
+    { label: 'Store Items', key: 'store_items', icon: <ShoppingBag size={18} />, tone: 'text-uno-red' },
+    { label: 'Achievements', key: 'achievements', icon: <Trophy size={18} />, tone: 'text-uno-yellow' },
+    { label: 'Badges', key: 'badges', icon: <Shield size={18} />, tone: 'text-uno-blue' },
+    { label: 'Card Skins', key: 'card_skins', icon: <PackageCheck size={18} />, tone: 'text-uno-green' },
+    { label: 'Titles', key: 'titles', icon: <Users size={18} />, tone: 'text-white' },
+    { label: 'Fragments', key: 'fragments', icon: <Database size={18} />, tone: 'text-gray-300' },
+  ], []);
+
+  const operations = useMemo(() => [
+    { label: 'Coin Ledger', value: overview.domainCounts?.coin_transactions, detail: 'wallet audit events', icon: <Coins size={18} />, tone: 'text-uno-yellow' },
+    { label: 'Quick Limits', value: overview.domainCounts?.quick_match_limits, detail: 'quick match limit docs', icon: <Zap size={18} />, tone: 'text-uno-blue' },
+    { label: 'Solo Limits', value: overview.domainCounts?.solo_match_limits, detail: 'solo play limit docs', icon: <Gamepad2 size={18} />, tone: 'text-uno-green' },
+    { label: 'IAP Attempts', value: overview.domainCounts?.iap_purchase_attempts, detail: 'purchase attempt records', icon: <ShoppingBag size={18} />, tone: 'text-uno-red' },
+    { label: 'UNO Pass XP', value: overview.domainCounts?.pass_xp_events, detail: 'pass progress events', icon: <Trophy size={18} />, tone: 'text-uno-yellow' },
+    { label: 'Notifications', value: overview.domainCounts?.notification_requests, detail: 'admin notification requests', icon: <Bell size={18} />, tone: 'text-uno-blue' },
+  ], [overview.domainCounts]);
 
   return (
-    <div className="space-y-8 p-8">
-      {/* Page Header */}
-      <div className="flex justify-between items-center">
+    <div className="space-y-6">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-3xl font-black tracking-tight mb-2 uppercase italic">Admin <span className="text-uno-red">Overview</span></h1>
-          <p className="text-gray-500 font-medium">Platform state as of {new Date().toLocaleTimeString()}</p>
+          <h1 className="text-3xl font-black uppercase italic tracking-tight">Admin <span className="text-uno-red">Overview</span></h1>
+          <p className="text-sm text-gray-500">Backend API snapshot from MongoDB, Socket.IO, and Redis.</p>
         </div>
-        <div className="flex items-center gap-2 px-4 py-2 bg-uno-red/10 border border-uno-red/20 rounded-xl">
-          <div className="w-2 h-2 bg-uno-red rounded-full animate-pulse" />
-          <span className="text-[10px] font-black text-uno-red uppercase tracking-widest">Live Sync</span>
-        </div>
+        <button onClick={load} className="inline-flex items-center gap-2 rounded-lg bg-white/5 px-4 py-3 text-xs font-black uppercase tracking-widest text-white hover:bg-white/10">
+          <RefreshCw size={16} className={loading ? 'animate-spin' : ''} /> Refresh
+        </button>
       </div>
 
-      {/* Hero Stats Banner */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="glass-dark rounded-3xl border border-uno-blue/20 p-6 flex items-center gap-5 shadow-xl shadow-uno-blue/5">
-          <div className="w-14 h-14 rounded-2xl bg-uno-blue/20 flex items-center justify-center flex-shrink-0">
-            <Users size={28} className="text-uno-blue" />
+      {error && <div className="rounded-lg border border-uno-red/30 bg-uno-red/10 px-4 py-3 text-sm font-bold text-uno-red">{error}</div>}
+
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {cards.map((card) => (
+          <div key={card.label} className="rounded-lg border border-white/10 bg-white/[0.03] p-5">
+            <div className={`mb-4 ${card.tone}`}>{card.icon}</div>
+            <div className="text-3xl font-black italic">{loading ? '...' : numberText(card.value)}</div>
+            <div className="mt-1 text-[10px] font-black uppercase tracking-widest text-gray-500">{card.label}</div>
           </div>
-          <div>
-            <p className="text-[10px] font-black text-gray-500 uppercase tracking-[0.25em] mb-1">Users</p>
-            <p className="text-3xl font-black italic tracking-tight">{loading ? '...' : counts.players.toLocaleString()}</p>
-          </div>
-        </div>
-        <div className="glass-dark rounded-3xl border border-uno-red/20 p-6 flex items-center gap-5 shadow-xl shadow-uno-red/5">
-          <div className="w-14 h-14 rounded-2xl bg-uno-red/20 flex items-center justify-center flex-shrink-0">
-            <Gamepad2 size={28} className="text-uno-red" />
-          </div>
-          <div>
-            <p className="text-[10px] font-black text-gray-500 uppercase tracking-[0.25em] mb-1">Live Rooms</p>
-            <p className="text-3xl font-black italic tracking-tight">{loading ? '...' : counts.activeRooms}</p>
-          </div>
-        </div>
-        <div className="glass-dark rounded-3xl border border-uno-green/20 p-6 flex items-center gap-5 shadow-xl shadow-uno-green/5">
-          <div className="w-14 h-14 rounded-2xl bg-uno-green/20 flex items-center justify-center flex-shrink-0">
-            <Activity size={28} className="text-uno-green" />
-          </div>
-          <div>
-            <p className="text-[10px] font-black text-gray-500 uppercase tracking-[0.25em] mb-1">Active Players</p>
-            <p className="text-3xl font-black italic tracking-tight">{loading ? '...' : counts.activePlayers}</p>
-          </div>
-        </div>
-        <div className="glass-dark rounded-3xl border border-uno-yellow/20 p-6 flex items-center gap-5 shadow-xl shadow-uno-yellow/5">
-          <div className="w-14 h-14 rounded-2xl bg-uno-yellow/20 flex items-center justify-center flex-shrink-0">
-            <Clock size={28} className="text-uno-yellow" />
-          </div>
-          <div>
-            <p className="text-[10px] font-black text-gray-500 uppercase tracking-[0.25em] mb-1">Room Codes</p>
-            <p className="text-3xl font-black italic tracking-tight">{loading ? '...' : counts.totalRoomCodes}</p>
-          </div>
-        </div>
+        ))}
       </div>
 
-      {/* Live Rooms Feed */}
-      <div className="glass-dark rounded-[40px] p-8 border border-white/5 relative overflow-hidden">
-        <div className="flex justify-between items-center mb-8 relative z-10">
-          <h2 className="text-xl font-bold flex items-center gap-3 italic">
-            <Activity size={20} className="text-uno-red" /> Live Rooms
-          </h2>
-          <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">{liveRooms.length} sessions</span>
-        </div>
-
-        <div className="space-y-4 relative z-10">
-          {liveRooms.length === 0 ? (
-            <div className="text-center py-12 text-gray-600 font-bold text-xs uppercase tracking-widest">
-              No active rooms right now
-            </div>
-          ) : (
-            liveRooms.map((room) => (
-              <div key={room.id} className="flex items-center justify-between p-5 rounded-3xl hover:bg-white/[0.03] transition-all border border-transparent hover:border-white/10 group">
-                <div className="flex items-center gap-4">
-                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-black italic text-sm shadow-xl border ${
-                    room.status === 'playing'
-                      ? 'bg-uno-green/20 border-uno-green/30 text-uno-green'
-                      : 'bg-uno-blue/20 border-uno-blue/30 text-uno-blue'
-                  }`}>
-                    #{room.roomCode.slice(-2)}
-                  </div>
-                  <div>
-                    <p className="text-sm font-bold text-white group-hover:text-uno-red transition-colors">
-                      Room #{room.roomCode}
-                    </p>
-                    <p className="text-[10px] text-gray-500 font-black uppercase tracking-widest">
-                      {room.hostName} · {room.playerCount} player{room.playerCount !== 1 ? 's' : ''} · {timeAgo(room.createdAt)}
-                    </p>
-                  </div>
+      <div className="grid gap-6 xl:grid-cols-3">
+        <section className="rounded-lg border border-white/10 bg-white/[0.03] p-5 xl:col-span-2">
+          <div className="mb-5 flex items-center justify-between">
+            <h2 className="text-lg font-black">Recent Users</h2>
+            <span className="text-[10px] font-black uppercase tracking-widest text-gray-500">{overview.recentUsers?.length || 0} records</span>
+          </div>
+          <div className="divide-y divide-white/5">
+            {(overview.recentUsers || []).map((user) => (
+              <div key={user.uid} className="flex items-center justify-between gap-4 py-3">
+                <div>
+                  <p className="font-bold text-white">{user.name || 'Player'}</p>
+                  <p className="text-xs text-gray-500">{user.email || user.uid}</p>
                 </div>
-                <div className="flex items-center gap-3">
-                  {room.isPublic 
-                    ? <Globe size={12} className="text-uno-blue" /> 
-                    : <Lock size={12} className="text-uno-yellow" />
-                  }
-                  <span className={`px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest border ${
-                    room.status === 'playing'
-                      ? 'bg-uno-green/10 text-uno-green border-uno-green/20'
-                      : 'bg-uno-blue/10 text-uno-blue border-uno-blue/20'
-                  }`}>
-                    {room.status}
-                  </span>
+                <div className="flex items-center gap-2">
+                  {user.isAdmin && <span className="rounded bg-uno-blue/10 px-2 py-1 text-[10px] font-black uppercase text-uno-blue">Admin</span>}
+                  {user.isBanned && <span className="rounded bg-uno-red/10 px-2 py-1 text-[10px] font-black uppercase text-uno-red">Banned</span>}
                 </div>
               </div>
-            ))
-          )}
-        </div>
+            ))}
+          </div>
+        </section>
 
-        <div className="absolute bottom-0 right-0 w-64 h-64 bg-uno-blue/5 rounded-full blur-[100px] -mr-32 -mb-32 pointer-events-none" />
+        <section className="rounded-lg border border-white/10 bg-white/[0.03] p-5">
+          <h2 className="mb-5 text-lg font-black">Controls Health</h2>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-400">Admins</span>
+              <span className="font-black">{numberText(overview.users?.admins)}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-400">Banned users</span>
+              <span className="font-black">{numberText(overview.users?.banned)}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-400">Game histories</span>
+              <span className="font-black">{numberText(overview.games?.histories)}</span>
+            </div>
+            <div className="flex items-center gap-3 rounded-lg border border-uno-green/20 bg-uno-green/10 p-3 text-uno-green">
+              <Shield size={18} />
+              <span className="text-xs font-black uppercase tracking-widest">Admin API Protected</span>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <div className="grid gap-6 xl:grid-cols-[1fr_1.4fr]">
+        <section className="rounded-lg border border-white/10 bg-white/[0.03] p-5">
+          <div className="mb-5 flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-black">Data Coverage</h2>
+              <p className="text-xs text-gray-500">Migrated catalog and reward documents in MongoDB.</p>
+            </div>
+            <Database className="text-gray-500" size={20} />
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {dataCoverage.map((item) => (
+              <div key={item.key} className="rounded-lg border border-white/10 bg-black/20 p-4">
+                <div className={`mb-3 ${item.tone}`}>{item.icon}</div>
+                <div className="text-2xl font-black italic">{loading ? '...' : numberText(overview.domainCounts?.[item.key])}</div>
+                <div className="mt-1 text-[10px] font-black uppercase tracking-widest text-gray-500">{item.label}</div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="rounded-lg border border-white/10 bg-white/[0.03] p-5">
+          <div className="mb-5 flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-black">Economy Operations</h2>
+              <p className="text-xs text-gray-500">Mutable systems that affect players, purchases, rewards, and limits.</p>
+            </div>
+            <Coins className="text-uno-yellow" size={20} />
+          </div>
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {operations.map((item) => (
+              <div key={item.label} className="rounded-lg border border-white/10 bg-black/20 p-4">
+                <div className={`mb-3 ${item.tone}`}>{item.icon}</div>
+                <div className="text-2xl font-black italic">{loading ? '...' : numberText(item.value)}</div>
+                <div className="text-[10px] font-black uppercase tracking-widest text-gray-500">{item.label}</div>
+                <p className="mt-2 text-xs text-gray-500">{item.detail}</p>
+              </div>
+            ))}
+          </div>
+        </section>
       </div>
     </div>
   );
