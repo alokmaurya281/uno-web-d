@@ -7,6 +7,7 @@ import {
   runPassSeasonTransition,
   saveConfig,
   saveSeason,
+  seedPassSeasons,
   sendNotification,
   type AdminConfigSummary,
   type AdminSeason,
@@ -132,6 +133,22 @@ const Settings: React.FC = () => {
     setMessage(`Season transition complete. Archived: ${result.transitioned.join(', ') || 'none'}.`);
   };
 
+  const seedSeasons = async () => {
+    setSaving(true);
+    setMessage('');
+    try {
+      const response = await seedPassSeasons(7);
+      setSeasons(response.seasons || []);
+      setSelectedSeason(0);
+      setSeasonWarnings([]);
+      setMessage(`Seeded ${response.seasons?.length || 0} UNO Pass seasons.`);
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : 'Season seed failed.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const saveCurrentSeason = async (season: AdminSeason) => {
     setSaving(true);
     setMessage('');
@@ -227,9 +244,14 @@ const Settings: React.FC = () => {
               saveCurrentSeason={saveCurrentSeason}
               rewardWarnings={seasonWarnings}
             />
-          <button onClick={() => void transitionPass()} className="mt-4 rounded-lg bg-white/5 px-4 py-3 text-xs font-black uppercase tracking-widest hover:bg-white/10">
-            Run Season Transition
-          </button>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <button onClick={() => void seedSeasons()} disabled={saving} className="rounded-lg bg-uno-yellow px-4 py-3 text-xs font-black uppercase tracking-widest text-black disabled:opacity-50">
+              Seed 7 Seasons
+            </button>
+            <button onClick={() => void transitionPass()} className="rounded-lg bg-white/5 px-4 py-3 text-xs font-black uppercase tracking-widest hover:bg-white/10">
+              Run Season Transition
+            </button>
+          </div>
         </section>
       </div>
     </div>

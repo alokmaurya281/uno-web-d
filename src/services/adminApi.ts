@@ -293,3 +293,10 @@ export function saveSeason(season: AdminSeason) {
     body: JSON.stringify(season),
   });
 }
+
+export function seedPassSeasons(count = 7) {
+  return requestJson<{ ok: boolean; seasons: AdminSeason[] }>('/api/admin/seasons/seed', {
+    method: 'POST',
+    body: JSON.stringify({ count }),
+  });
+}
