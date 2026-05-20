@@ -12,8 +12,5 @@ export default defineConfig({
     headers: {
       'Cross-Origin-Opener-Policy': 'same-origin-allow-popups',
     },
-    proxy: {
-      '/api': process.env.VITE_API_PROXY_TARGET || 'http://localhost:3000',
-    },
   },
 })
