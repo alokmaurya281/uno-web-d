@@ -1,14 +1,13 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useCallback, useState, useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { LogIn, ShieldCheck, Mail, Lock, AlertCircle, Globe, Terminal, ChevronDown, ChevronUp, RefreshCw } from 'lucide-react';
-import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
-import { ref, get } from 'firebase/database';
-import { auth, db, rtdb } from '../firebase/config';
+import { getRedirectResult, signInWithEmailAndPassword, signInWithRedirect, GoogleAuthProvider, signOut, type User as FirebaseUser } from 'firebase/auth';
+import { auth } from '../firebase/config';
 import { setUser } from '../store/slices/authSlice';
 import type { RootState } from '../store';
+import { getMe } from '../services/adminApi';
 
 interface LogEntry {
   timestamp: string;
@@ -16,21 +15,33 @@ interface LogEntry {
   type: 'info' | 'error' | 'success' | 'warn';
 }
 
+interface LoginLocationState {
+  from?: { pathname?: string };
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : 'Unexpected error.';
+}
+
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
-  const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [logs, setLogs] = useState<LogEntry[]>([
+    { timestamp: new Date().toLocaleTimeString(), message: 'Diagnostic console initialized.', type: 'info' },
+    { timestamp: new Date().toLocaleTimeString(), message: 'Ready for Login. Redirect mode enabled.', type: 'info' },
+  ]);
   const [showConsole, setShowConsole] = useState(true); // Keep it open during troubleshooting
   
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, isAdmin } = useSelector((state: RootState) => state.auth);
+  const { isAdmin } = useSelector((state: RootState) => state.auth);
   const isMounted = useRef(true);
+  const redirectChecked = useRef(false);
 
-  const addLog = (message: string, type: LogEntry['type'] = 'info') => {
+  const addLog = useCallback((message: string, type: LogEntry['type'] = 'info') => {
     const entry = {
       timestamp: new Date().toLocaleTimeString(),
       message,
@@ -38,26 +49,77 @@ const Login: React.FC = () => {
     };
     setLogs(prev => [entry, ...prev].slice(0, 50));
     console.log(`[AUTH-DIAGNOSTIC] ${message}`);
-  };
+  }, []);
 
   useEffect(() => {
-    addLog("Diagnostic console initialized.");
-    addLog("Ready for Login. Popup mode enabled.");
     return () => { isMounted.current = false; };
   }, []);
 
-  // Display error if user arrives authenticated but is not an admin
-  useEffect(() => {
-    if (user && !isAdmin && !isProcessing) {
-      setError('Access Denied: Your account does not have administrative privileges.');
+  const verifyAdmin = useCallback(async (uid: string, user: FirebaseUser) => {
+    if (!isMounted.current) return;
+    setIsProcessing(true);
+    setError('');
+    
+    addLog(`STARTING VERIFICATION FOR UID: ${uid}`);
+    addLog(`Email: ${user.email}`);
+
+    try {
+      addLog("[API] Requesting admin profile from backend...");
+      const response = await getMe();
+      addLog(`[API] isAdmin: ${response.user?.isAdmin}`, response.user?.isAdmin ? 'success' : 'warn');
+      if (response.user?.isAdmin === true) {
+        dispatch(setUser({
+          user: {
+            uid,
+            email: response.user.email || user.email,
+            displayName: response.user.name || user.displayName,
+            photoURL: response.user.avatarUrl || user.photoURL,
+          },
+          isAdmin: true,
+        }));
+        return;
+      }
+    } catch (err: unknown) {
+      addLog(`[API] ${errorMessage(err)}`, 'error');
     }
-  }, [user, isAdmin, isProcessing]);
+
+    if (isMounted.current) {
+      setError('Access Denied: Administrative privileges not found.');
+      addLog("Backend admin check failed.", 'error');
+      await signOut(auth);
+      dispatch(setUser({ user: null, isAdmin: false }));
+      setIsProcessing(false);
+    }
+  }, [addLog, dispatch]);
+
+  useEffect(() => {
+    if (redirectChecked.current) return;
+    redirectChecked.current = true;
+
+    const completeGoogleRedirect = async () => {
+      try {
+        const result = await getRedirectResult(auth);
+        if (!result || !isMounted.current) return;
+
+        setIsProcessing(true);
+        addLog(`Google redirect success: ${result.user.email}`, 'success');
+        await verifyAdmin(result.user.uid, result.user);
+      } catch (err: unknown) {
+        if (isMounted.current) {
+          setIsProcessing(false);
+          addLog(`Google redirect error: ${errorMessage(err)}`, 'error');
+          setError('Google login failed or cancelled.');
+        }
+      }
+    };
+
+    completeGoogleRedirect();
+  }, [addLog, verifyAdmin]);
 
   // Global Redirect if isAdmin becomes true
   useEffect(() => {
     if (isAdmin) {
-      const target = (location.state as any)?.from?.pathname || '/admin';
-      addLog(`ADMIN CONFIRMED. Attempting redirect to: ${target}`, 'success');
+      const target = (location.state as LoginLocationState | null)?.from?.pathname || '/admin';
       
       // Use a small timeout to ensure Redux state is settled and logs are visible
       const timer = setTimeout(() => {
@@ -66,95 +128,7 @@ const Login: React.FC = () => {
       
       return () => clearTimeout(timer);
     }
-  }, [isAdmin, navigate, location]);
-
-  const verifyAdmin = async (uid: string, user: any) => {
-    if (!isMounted.current) return;
-    setIsProcessing(true);
-    setError('');
-    
-    addLog(`STARTING VERIFICATION FOR UID: ${uid}`);
-    addLog(`Email: ${user.email}`);
-
-    // Collections to check in Firestore
-    const firestoreCollections = ['users', 'Players', 'admins', 'Admin'];
-    let adminFound = false;
-
-    // 1. Try Firestore checks
-    for (const colName of firestoreCollections) {
-      addLog(`[Firestore] Querying '${colName}/${uid}'...`);
-      try {
-        const userDoc = await getDoc(doc(db, colName, uid));
-        if (userDoc.exists()) {
-          const data = userDoc.data();
-          addLog(`[Firestore] DOC FOUND in '${colName}'!`, 'success');
-          addLog(`[Firestore] isAdmin field value: ${data.isAdmin} (${typeof data.isAdmin})`);
-          
-          if (data.isAdmin === true || data.isAdmin === "true") {
-            addLog("Admin validation passed (Firestore).", 'success');
-            dispatch(setUser({ 
-              user: { 
-                uid: user.uid, 
-                email: user.email, 
-                displayName: user.displayName,
-                photoURL: user.photoURL 
-              }, 
-              isAdmin: true 
-            }));
-            adminFound = true;
-            break;
-          }
-        }
-      } catch (err: any) {
-        addLog(`[Firestore] Error: ${err.message}`, 'error');
-      }
-    }
-
-    // 2. Try Realtime Database fallback if not found in Firestore
-    if (!adminFound) {
-      addLog("[RTDB] No admin found in Firestore. Checking Realtime DB fallbacks...");
-      const rtdbPaths = ['users', 'Players', 'admins', 'Admins'];
-      
-      for (const path of rtdbPaths) {
-        try {
-          const rtdbRef = ref(rtdb, `${path}/${uid}`);
-          addLog(`[RTDB] Querying '${path}/${uid}'...`);
-          const snapshot = await get(rtdbRef);
-          
-          if (snapshot.exists()) {
-            const data = snapshot.val();
-            addLog(`[RTDB] DOC FOUND in '${path}'!`, 'success');
-            addLog(`[RTDB] isAdmin field value: ${data.isAdmin} (${typeof data.isAdmin})`);
-            
-            if (data.isAdmin === true || data.isAdmin === "true") {
-              addLog("Admin validation passed (RTDB).", 'success');
-              dispatch(setUser({ 
-                user: { 
-                  uid, 
-                  email: user.email, 
-                  displayName: user.displayName,
-                  photoURL: user.photoURL 
-                }, 
-                isAdmin: true 
-              }));
-              adminFound = true;
-              break;
-            }
-          }
-        } catch (err: any) {
-          addLog(`[RTDB] Error checking '${path}': ${err.message}`, 'error');
-        }
-      }
-    }
-
-    if (!adminFound && isMounted.current) {
-      setError('Access Denied: Administrative privileges not found.');
-      addLog("All database checks failed.", 'error');
-      await signOut(auth);
-      dispatch(setUser({ user: null, isAdmin: false }));
-      setIsProcessing(false);
-    }
-  };
+  }, [isAdmin, navigate, location.state]);
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -166,10 +140,10 @@ const Login: React.FC = () => {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       addLog("Email login success. Verifying role...", 'success');
       await verifyAdmin(userCredential.user.uid, userCredential.user);
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (isMounted.current) {
         setIsProcessing(false);
-        addLog(`Login error: ${err.message}`, 'error');
+        addLog(`Login error: ${errorMessage(err)}`, 'error');
         setError('Invalid admin email or password.');
       }
     }
@@ -178,17 +152,15 @@ const Login: React.FC = () => {
   const handleGoogleLogin = async () => {
     setError('');
     setIsProcessing(true);
-    addLog("Opening Google Popup...");
+    addLog("Redirecting to Google Sign-In...");
     const provider = new GoogleAuthProvider();
 
     try {
-      const result = await signInWithPopup(auth, provider);
-      addLog(`Popup success: ${result.user.email}`, 'success');
-      await verifyAdmin(result.user.uid, result.user);
-    } catch (err: any) {
+      await signInWithRedirect(auth, provider);
+    } catch (err: unknown) {
       if (isMounted.current) {
         setIsProcessing(false);
-        addLog(`Popup error: ${err.message}`, 'error');
+        addLog(`Google redirect start error: ${errorMessage(err)}`, 'error');
         setError('Google login failed or cancelled.');
       }
     }

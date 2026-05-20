@@ -1,212 +1,109 @@
-import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { 
-  Users, 
-  Gamepad2,  
-  BarChart3, 
-  Activity,
-  Clock,
-  Globe,
-  Lock
-} from 'lucide-react';
-import { collection, getDocs } from 'firebase/firestore';
-import { ref, onValue } from 'firebase/database';
-import { db, rtdb } from '../../firebase/config';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Activity, BarChart3, Gamepad2, RefreshCw, Users } from 'lucide-react';
+import { getOverview, type LiveRoom } from '../../services/adminApi';
+
+interface AnalyticsOverview {
+  users?: { total?: number; admins?: number; banned?: number };
+  live?: { rooms?: number; waitingRooms?: number; playingRooms?: number; onlineUsers?: number; roomList?: LiveRoom[] };
+  games?: { histories?: number };
+  economy?: { coins?: number; totalScore?: number };
+}
 
 const Analytics: React.FC = () => {
+  const [overview, setOverview] = useState<AnalyticsOverview>({});
   const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState({
-    totalUsers: 0,
-    liveRooms: 0,
-    totalRoomCodes: 0,
-    activePlayers: 0,
-    waitingRooms: 0,
-    playingRooms: 0,
-    publicRooms: 0,
-    privateRooms: 0,
-  });
 
-  // Per-room breakdown for bar chart
-  const [roomSizes, setRoomSizes] = useState<{ code: string; players: number; status: string }[]>([]);
+  const load = async () => {
+    setLoading(true);
+    try {
+      const response = await getOverview();
+      setOverview(response.overview as AnalyticsOverview);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    // Firestore: total users
-    const fetchUsers = async () => {
-      try {
-        const snap = await getDocs(collection(db, 'users'));
-        setStats(prev => ({ ...prev, totalUsers: snap.size }));
-      } catch (e) {
-        console.error('Error fetching users:', e);
-      }
-    };
-    fetchUsers();
-
-    // RTDB: rooms + roomCodes
-    const roomsRef = ref(rtdb, 'rooms');
-    const unsub1 = onValue(roomsRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data) {
-        const entries = Object.entries(data) as [string, any][];
-        let actPlayers = 0, waiting = 0, playing = 0, pub = 0, priv = 0;
-        const sizes: { code: string; players: number; status: string }[] = [];
-
-        entries.forEach(([, v]: [string, any]) => {
-          const info = v.info || {};
-          const playerCount = v.players ? Object.keys(v.players).length : 0;
-          actPlayers += playerCount;
-          if (info.status === 'playing') playing++;
-          else waiting++;
-          if (info.isPublic) pub++;
-          else priv++;
-          sizes.push({
-            code: info.roomCode || '???',
-            players: playerCount,
-            status: info.status || 'waiting',
-          });
-        });
-
-        setStats(prev => ({
-          ...prev,
-          liveRooms: entries.length,
-          activePlayers: actPlayers,
-          waitingRooms: waiting,
-          playingRooms: playing,
-          publicRooms: pub,
-          privateRooms: priv,
-        }));
-        setRoomSizes(sizes.sort((a, b) => b.players - a.players).slice(0, 12));
-      } else {
-        setStats(prev => ({ ...prev, liveRooms: 0, activePlayers: 0, waitingRooms: 0, playingRooms: 0, publicRooms: 0, privateRooms: 0 }));
-        setRoomSizes([]);
-      }
-      setLoading(false);
-    });
-
-    const codesRef = ref(rtdb, 'roomCodes');
-    const unsub2 = onValue(codesRef, (snapshot) => {
-      const data = snapshot.val();
-      setStats(prev => ({ ...prev, totalRoomCodes: data ? Object.keys(data).length : 0 }));
-    });
-
-    return () => { unsub1(); unsub2(); };
+    void load();
   }, []);
 
-  const maxPlayers = Math.max(...roomSizes.map(r => r.players), 1);
+  const roomSizes = useMemo(() => (overview.live?.roomList || []).slice(0, 12), [overview.live?.roomList]);
+  const maxPlayers = Math.max(...roomSizes.map((room) => Number(room.playerCount || 0)), 1);
 
   return (
-    <div className="space-y-8 p-8">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-black tracking-tight mb-2 uppercase italic">Platform <span className="text-uno-red">Analytics</span></h1>
-        <p className="text-gray-500 font-medium">Real-time platform health from Firebase data.</p>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-black uppercase italic tracking-tight">Platform <span className="text-uno-red">Analytics</span></h1>
+          <p className="text-sm text-gray-500">Operational metrics from backend APIs.</p>
+        </div>
+        <button onClick={load} className="inline-flex items-center gap-2 rounded-lg bg-white/5 px-4 py-3 text-xs font-black uppercase tracking-widest hover:bg-white/10">
+          <RefreshCw size={16} className={loading ? 'animate-spin' : ''} /> Refresh
+        </button>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-        {([
-          { label: 'Total Users', value: stats.totalUsers, icon: <Users size={22} />, color: 'uno-blue' },
-          { label: 'Live Rooms', value: stats.liveRooms, icon: <Gamepad2 size={22} />, color: 'uno-red' },
-          { label: 'Active Players', value: stats.activePlayers, icon: <Activity size={22} />, color: 'uno-green' },
-          { label: 'Room Codes', value: stats.totalRoomCodes, icon: <Clock size={22} />, color: 'uno-yellow' },
-        ] as const).map((s, i) => (
-          <div key={i} className="glass-dark p-6 rounded-3xl border border-white/5 shadow-xl">
-            <div className={`p-3 bg-${s.color}/10 text-${s.color} rounded-2xl w-fit mb-4`}>{s.icon}</div>
-            <h3 className="text-3xl font-black italic tracking-tight">{loading ? '...' : s.value.toLocaleString()}</h3>
-            <p className="text-gray-500 text-[10px] font-black uppercase tracking-widest mt-1">{s.label}</p>
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {[
+          { label: 'Total Users', value: overview.users?.total, icon: <Users size={22} />, tone: 'text-uno-blue' },
+          { label: 'Online Users', value: overview.live?.onlineUsers, icon: <Activity size={22} />, tone: 'text-uno-green' },
+          { label: 'Live Rooms', value: overview.live?.rooms, icon: <Gamepad2 size={22} />, tone: 'text-uno-red' },
+          { label: 'Game Records', value: overview.games?.histories, icon: <BarChart3 size={22} />, tone: 'text-uno-yellow' },
+        ].map((item) => (
+          <div key={item.label} className="rounded-lg border border-white/10 bg-white/[0.03] p-5">
+            <div className={item.tone}>{item.icon}</div>
+            <div className="mt-4 text-3xl font-black italic">{Number(item.value || 0).toLocaleString()}</div>
+            <div className="text-[10px] font-black uppercase tracking-widest text-gray-500">{item.label}</div>
           </div>
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Bar chart: Players per Room */}
-        <div className="lg:col-span-2 glass-dark p-8 rounded-[40px] border border-white/5 relative overflow-hidden">
-          <div className="relative z-10">
-            <h2 className="text-xl font-bold flex items-center gap-3 mb-1">
-              <BarChart3 className="text-uno-red" /> Players per Room
-            </h2>
-            <p className="text-gray-500 text-sm mb-8">Current player distribution across live rooms</p>
-
-            {roomSizes.length === 0 ? (
-              <div className="flex items-center justify-center h-48 text-gray-600 font-bold text-xs uppercase tracking-widest">
-                No active rooms to display
+      <div className="grid gap-6 xl:grid-cols-3">
+        <section className="rounded-lg border border-white/10 bg-white/[0.03] p-5 xl:col-span-2">
+          <h2 className="mb-1 flex items-center gap-2 text-lg font-black"><BarChart3 className="text-uno-red" /> Players Per Room</h2>
+          <p className="mb-6 text-sm text-gray-500">Top live rooms by current player count.</p>
+          <div className="flex h-56 items-end gap-2">
+            {roomSizes.map((room) => (
+              <div key={room.id} className="flex flex-1 flex-col items-center gap-2">
+                <div className="flex h-full w-full items-end rounded bg-white/5">
+                  <div
+                    className={`w-full rounded ${room.status === 'playing' ? 'bg-uno-green/70' : 'bg-uno-blue/70'}`}
+                    style={{ height: `${(Number(room.playerCount || 0) / maxPlayers) * 100}%` }}
+                  />
+                </div>
+                <span className="max-w-full truncate text-[9px] font-black text-gray-500">{room.roomCode || room.id.slice(0, 4)}</span>
               </div>
-            ) : (
-              <div className="flex items-end gap-2 h-48">
-                {roomSizes.map((room, i) => (
-                  <div key={i} className="flex-1 flex flex-col items-center gap-2 group">
-                    <div className="w-full relative h-full flex items-end">
-                      <motion.div
-                        initial={{ height: 0 }}
-                        animate={{ height: `${(room.players / maxPlayers) * 100}%` }}
-                        transition={{ delay: i * 0.05, duration: 0.8, ease: 'easeOut' }}
-                        className={`w-full rounded-t-lg transition-all relative ${
-                          room.status === 'playing'
-                            ? 'bg-uno-green/60 group-hover:bg-uno-green/80'
-                            : 'bg-white/10 group-hover:bg-white/20'
-                        }`}
-                      >
-                        <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-white text-uno-dark text-[10px] font-black px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                          {room.players}p
-                        </div>
-                      </motion.div>
-                    </div>
-                    <span className="text-[8px] font-black text-gray-600 uppercase tracking-tighter">
-                      {room.code.slice(-3)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
+            ))}
+            {roomSizes.length === 0 && <div className="flex flex-1 items-center justify-center text-sm font-bold text-gray-500">No live room data.</div>}
           </div>
-          <div className="absolute top-0 right-0 w-64 h-64 bg-uno-red/5 rounded-full blur-[100px] -mr-32 -mt-32" />
-        </div>
+        </section>
 
-        {/* Room Breakdown */}
-        <div className="glass-dark p-8 rounded-[40px] border border-white/5 flex flex-col gap-8">
-          <h2 className="text-xl font-bold italic">Room Breakdown</h2>
-
-          <div className="space-y-6 flex-1">
-            <div>
-              <div className="flex justify-between text-[10px] font-black uppercase tracking-widest mb-3">
-                <span className="text-gray-500">Waiting Rooms</span>
-                <span className="text-uno-blue">{stats.waitingRooms}</span>
-              </div>
-              <div className="w-full h-3 bg-white/5 rounded-full overflow-hidden p-0.5 border border-white/5">
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: stats.liveRooms > 0 ? `${(stats.waitingRooms / stats.liveRooms) * 100}%` : '0%' }}
-                  className="h-full bg-uno-blue rounded-full shadow-[0_0_15px_rgba(59,130,246,0.4)]"
-                />
-              </div>
-            </div>
-            <div>
-              <div className="flex justify-between text-[10px] font-black uppercase tracking-widest mb-3">
-                <span className="text-gray-500">Playing Rooms</span>
-                <span className="text-uno-green">{stats.playingRooms}</span>
-              </div>
-              <div className="w-full h-3 bg-white/5 rounded-full overflow-hidden p-0.5 border border-white/5">
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: stats.liveRooms > 0 ? `${(stats.playingRooms / stats.liveRooms) * 100}%` : '0%' }}
-                  className="h-full bg-uno-green rounded-full shadow-[0_0_15px_rgba(34,197,94,0.4)]"
-                />
-              </div>
-            </div>
-            <div>
-              <div className="flex justify-between text-[10px] font-black uppercase tracking-widest mb-3">
-                <span className="text-gray-500 flex items-center gap-1"><Globe size={10} /> Public</span>
-                <span className="text-white">{stats.publicRooms}</span>
-              </div>
-              <div className="flex justify-between text-[10px] font-black uppercase tracking-widest mb-3 mt-4">
-                <span className="text-gray-500 flex items-center gap-1"><Lock size={10} /> Private</span>
-                <span className="text-white">{stats.privateRooms}</span>
-              </div>
-            </div>
+        <section className="rounded-lg border border-white/10 bg-white/[0.03] p-5">
+          <h2 className="mb-5 text-lg font-black">Room State</h2>
+          <div className="space-y-5">
+            <Metric label="Waiting" value={overview.live?.waitingRooms || 0} total={overview.live?.rooms || 0} color="bg-uno-blue" />
+            <Metric label="Playing" value={overview.live?.playingRooms || 0} total={overview.live?.rooms || 0} color="bg-uno-green" />
+            <Metric label="Admins" value={overview.users?.admins || 0} total={overview.users?.total || 0} color="bg-uno-red" />
+            <Metric label="Banned" value={overview.users?.banned || 0} total={overview.users?.total || 0} color="bg-uno-yellow" />
           </div>
-        </div>
+        </section>
       </div>
     </div>
   );
 };
+
+function Metric({ label, value, total, color }: { label: string; value: number; total: number; color: string }) {
+  const width = total > 0 ? `${Math.min(100, (value / total) * 100)}%` : '0%';
+  return (
+    <div>
+      <div className="mb-2 flex justify-between text-xs font-bold text-gray-400">
+        <span>{label}</span>
+        <span>{value}</span>
+      </div>
+      <div className="h-2 rounded bg-white/5">
+        <div className={`h-full rounded ${color}`} style={{ width }} />
+      </div>
+    </div>
+  );
+}
 
 export default Analytics;

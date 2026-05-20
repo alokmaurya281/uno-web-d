@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   X, 
@@ -8,8 +8,13 @@ import {
   Calendar, 
   Trophy, 
   Gamepad2, 
-  ExternalLink
+  ExternalLink,
+  Coins,
+  PackageCheck,
+  Clock,
+  Activity
 } from 'lucide-react';
+import { getUserDetail, type AdminUserDetail } from '../../services/adminApi';
 
 interface UserProfileModalProps {
   user: {
@@ -19,25 +24,77 @@ interface UserProfileModalProps {
     avatarUrl?: string;
     isAdmin?: boolean;
     isBanned?: boolean;
+    coins?: number;
+    wins?: number;
+    hasUnoPass?: boolean;
     gamesPlayed?: number;
     totalScore?: number;
-    createdAt?: any;
+    createdAt?: unknown;
   } | null;
   isOpen: boolean;
   onClose: () => void;
 }
 
 const UserProfileModal: React.FC<UserProfileModalProps> = ({ user, isOpen, onClose }) => {
+  const [detail, setDetail] = useState<AdminUserDetail | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState('');
+
+  useEffect(() => {
+    if (!isOpen || !user?.uid) return;
+    let cancelled = false;
+
+    const loadDetail = async () => {
+      setDetailLoading(true);
+      setDetailError('');
+      try {
+        const response = await getUserDetail(user.uid);
+        if (!cancelled) setDetail(response);
+      } catch (err) {
+        if (!cancelled) setDetailError(err instanceof Error ? err.message : 'Failed to load user detail.');
+      } finally {
+        if (!cancelled) setDetailLoading(false);
+      }
+    };
+
+    void loadDetail();
+    return () => { cancelled = true; };
+  }, [isOpen, user?.uid]);
+
   if (!user) return null;
+
+  const fullUser = detail?.user || user;
+  const coinHistory = detail?.coinHistory || [];
+  const ownedItems = detail?.ownedItems || [];
+  const limits = detail?.limits || [];
+  const gameHistory = detail?.gameHistory || [];
 
   // Parse real createdAt (could be Firestore Timestamp or epoch)
   const getRegisteredDate = () => {
-    if (!user.createdAt) return '—';
-    if (user.createdAt?.toDate) return user.createdAt.toDate().toLocaleDateString();
-    if (typeof user.createdAt === 'number') return new Date(user.createdAt).toLocaleDateString();
-    if (typeof user.createdAt === 'string') return new Date(user.createdAt).toLocaleDateString();
+    const value = fullUser.createdAt;
+    if (!value) return '—';
+    if (typeof value === 'object' && value != null && 'toDate' in value && typeof value.toDate === 'function') return value.toDate().toLocaleDateString();
+    if (typeof value === 'number') return new Date(value).toLocaleDateString();
+    if (typeof value === 'string') return new Date(value).toLocaleDateString();
     return '—';
   };
+
+  const formatDate = (value: unknown) => {
+    if (!value) return '—';
+    if (typeof value === 'object' && value != null && 'toDate' in value && typeof value.toDate === 'function') return value.toDate().toLocaleString();
+    const date = new Date(String(value));
+    return Number.isNaN(date.getTime()) ? '—' : date.toLocaleString();
+  };
+
+  const textValue = (entry: Record<string, unknown>, keys: string[], fallback = '—') => {
+    for (const key of keys) {
+      const value = entry[key];
+      if (value != null && value !== '') return String(value);
+    }
+    return fallback;
+  };
+
+  const numberValue = (value: unknown) => Number(value || 0).toLocaleString();
 
   return (
     <AnimatePresence>
@@ -64,23 +121,23 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ user, isOpen, onClo
               <div className="relative mb-6">
                 <div className="w-32 h-32 rounded-[40px] bg-gradient-to-tr from-uno-red to-uno-accent p-[3px] shadow-2xl rotate-3">
                   <div className="w-full h-full rounded-[38px] bg-uno-dark overflow-hidden flex items-center justify-center border border-white/10">
-                    {user.avatarUrl ? (
-                      <img src={user.avatarUrl} alt="" className="w-full h-full object-cover" />
+                    {fullUser.avatarUrl ? (
+                      <img src={fullUser.avatarUrl} alt="" className="w-full h-full object-cover" />
                     ) : (
-                      <span className="text-4xl font-black italic text-uno-red">{user.name?.[0] || 'U'}</span>
+                      <span className="text-4xl font-black italic text-uno-red">{fullUser.name?.[0] || 'U'}</span>
                     )}
                   </div>
                 </div>
-                {user.isAdmin && (
+                {fullUser.isAdmin && (
                   <div className="absolute -bottom-2 -right-2 bg-uno-red text-white p-2 rounded-2xl shadow-xl border-4 border-uno-dark">
                     <Shield size={18} />
                   </div>
                 )}
               </div>
 
-              <h2 className="text-2xl font-black italic text-white mb-1 uppercase tracking-tighter">{user.name || 'Anonymous'}</h2>
+              <h2 className="text-2xl font-black italic text-white mb-1 uppercase tracking-tighter">{fullUser.name || 'Anonymous'}</h2>
               <p className="text-xs text-gray-500 font-bold uppercase tracking-widest mb-6 flex items-center gap-2">
-                <Mail size={12} /> {user.email || 'No email associated'}
+                <Mail size={12} /> {fullUser.email || 'No email associated'}
               </p>
 
               <div className="w-full space-y-3 pt-6 border-t border-white/5">
@@ -88,14 +145,14 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ user, isOpen, onClo
                   <ExternalLink size={14} /> View in Firebase
                 </button>
                 <button className={`w-full py-4 px-6 rounded-2xl text-xs font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                    user.isBanned ? 'bg-uno-green/10 text-uno-green hover:bg-uno-green/20' : 'bg-uno-red/10 text-uno-red hover:bg-uno-red/20'
+                    fullUser.isBanned ? 'bg-uno-green/10 text-uno-green hover:bg-uno-green/20' : 'bg-uno-red/10 text-uno-red hover:bg-uno-red/20'
                 }`}>
-                  <UserX size={14} /> {user.isBanned ? 'Unban Player' : 'Ban Player'}
+                  <UserX size={14} /> {fullUser.isBanned ? 'Unban Player' : 'Ban Player'}
                 </button>
               </div>
 
               <p className="mt-auto pt-8 text-[10px] text-gray-600 font-black uppercase tracking-[0.3em]">
-                UID: {user.uid.slice(0, 12)}...
+                UID: {fullUser.uid.slice(0, 12)}...
               </p>
             </div>
 
@@ -115,17 +172,80 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ user, isOpen, onClo
               </div>
 
               {/* Stats Grid - real data only */}
-              <div className="grid grid-cols-2 gap-6 mb-12">
-                <div className="bg-white/5 rounded-3xl p-6 border border-white/5 hover:border-white/20 transition-all group">
+              <div className="grid grid-cols-2 gap-4 mb-8 xl:grid-cols-4">
+                <div className="bg-white/5 rounded-2xl p-5 border border-white/5 hover:border-white/20 transition-all group">
                   <div className="mb-4 opacity-50 group-hover:opacity-100 transition-opacity"><Gamepad2 className="text-uno-red" /></div>
                   <p className="text-[10px] text-gray-500 font-black uppercase tracking-widest mb-1">Total Matches</p>
-                  <p className="text-2xl font-black italic">{user.gamesPlayed ?? '—'}</p>
+                  <p className="text-2xl font-black italic">{fullUser.gamesPlayed ?? '—'}</p>
                 </div>
-                <div className="bg-white/5 rounded-3xl p-6 border border-white/5 hover:border-white/20 transition-all group">
+                <div className="bg-white/5 rounded-2xl p-5 border border-white/5 hover:border-white/20 transition-all group">
                   <div className="mb-4 opacity-50 group-hover:opacity-100 transition-opacity"><Trophy className="text-uno-yellow" /></div>
                   <p className="text-[10px] text-gray-500 font-black uppercase tracking-widest mb-1">Global Score</p>
-                  <p className="text-2xl font-black italic">{user.totalScore ?? '—'}</p>
+                  <p className="text-2xl font-black italic">{fullUser.totalScore ?? '—'}</p>
                 </div>
+                <div className="bg-white/5 rounded-2xl p-5 border border-white/5 hover:border-white/20 transition-all group">
+                  <div className="mb-4 opacity-50 group-hover:opacity-100 transition-opacity"><Coins className="text-uno-yellow" /></div>
+                  <p className="text-[10px] text-gray-500 font-black uppercase tracking-widest mb-1">Coins</p>
+                  <p className="text-2xl font-black italic">{numberValue(fullUser.coins)}</p>
+                </div>
+                <div className="bg-white/5 rounded-2xl p-5 border border-white/5 hover:border-white/20 transition-all group">
+                  <div className="mb-4 opacity-50 group-hover:opacity-100 transition-opacity"><PackageCheck className="text-uno-green" /></div>
+                  <p className="text-[10px] text-gray-500 font-black uppercase tracking-widest mb-1">Inventory</p>
+                  <p className="text-2xl font-black italic">{ownedItems.length}</p>
+                </div>
+              </div>
+
+              {detailLoading && <div className="mb-6 rounded-2xl border border-white/10 bg-white/5 p-4 text-sm font-bold text-gray-400">Loading account detail...</div>}
+              {detailError && <div className="mb-6 rounded-2xl border border-uno-red/30 bg-uno-red/10 p-4 text-sm font-bold text-uno-red">{detailError}</div>}
+
+              <div className="mb-8 grid gap-5 xl:grid-cols-2">
+                <DetailPanel title="Coin History" icon={<Coins size={16} className="text-uno-yellow" />} empty="No coin events found.">
+                  {coinHistory.slice(0, 8).map((entry, index) => (
+                    <div key={`${textValue(entry, ['id', 'firestoreId'], String(index))}-${index}`} className="flex items-center justify-between gap-4 border-b border-white/5 py-3 last:border-0">
+                      <div>
+                        <p className="text-sm font-bold text-white">{textValue(entry, ['type', 'reason', 'source'], 'coin event')}</p>
+                        <p className="text-xs text-gray-500">{formatDate(entry.timestamp || entry.createdAt)}</p>
+                      </div>
+                      <span className={`text-sm font-black ${Number(entry.amount || 0) >= 0 ? 'text-uno-green' : 'text-uno-red'}`}>{numberValue(entry.amount)}</span>
+                    </div>
+                  ))}
+                </DetailPanel>
+
+                <DetailPanel title="Inventory" icon={<PackageCheck size={16} className="text-uno-green" />} empty="No owned items found.">
+                  {ownedItems.slice(0, 8).map((entry, index) => (
+                    <div key={`${textValue(entry, ['itemId', 'id', 'firestoreId'], String(index))}-${index}`} className="flex items-center justify-between gap-4 border-b border-white/5 py-3 last:border-0">
+                      <div>
+                        <p className="text-sm font-bold text-white">{textValue(entry, ['itemId', 'id'], 'item')}</p>
+                        <p className="text-xs text-gray-500">{textValue(entry, ['purchaseType', 'category'], 'owned')}</p>
+                      </div>
+                      {entry.isEquipped === true && <span className="rounded bg-uno-blue/10 px-2 py-1 text-[10px] font-black uppercase text-uno-blue">Equipped</span>}
+                    </div>
+                  ))}
+                </DetailPanel>
+
+                <DetailPanel title="Daily Limits" icon={<Clock size={16} className="text-uno-blue" />} empty="No daily limit records found.">
+                  {limits.slice(0, 8).map((entry, index) => (
+                    <div key={`${textValue(entry, ['type', 'id'], String(index))}-${index}`} className="flex items-center justify-between gap-4 border-b border-white/5 py-3 last:border-0">
+                      <div>
+                        <p className="text-sm font-bold text-white">{textValue(entry, ['type'], 'limit')}</p>
+                        <p className="text-xs text-gray-500">{textValue(entry, ['lastMatchDate', 'date'], 'today')}</p>
+                      </div>
+                      <span className="text-sm font-black text-white">{numberValue(entry.matchesPlayed)} played</span>
+                    </div>
+                  ))}
+                </DetailPanel>
+
+                <DetailPanel title="Match History" icon={<Activity size={16} className="text-uno-red" />} empty="No match history found.">
+                  {gameHistory.slice(0, 8).map((entry, index) => (
+                    <div key={`${textValue(entry, ['id', 'gameId', 'firestoreId'], String(index))}-${index}`} className="flex items-center justify-between gap-4 border-b border-white/5 py-3 last:border-0">
+                      <div>
+                        <p className="text-sm font-bold text-white">{textValue(entry, ['mode', 'gameMode', 'result'], 'match')}</p>
+                        <p className="text-xs text-gray-500">{formatDate(entry.playedAt || entry.date || entry.createdAt)}</p>
+                      </div>
+                      <span className="text-sm font-black text-uno-yellow">{numberValue(entry.score || entry.points)}</span>
+                    </div>
+                  ))}
+                </DetailPanel>
               </div>
 
               {/* Account Info */}
@@ -144,7 +264,7 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ user, isOpen, onClo
                     <div>
                       <p className="text-[10px] text-gray-600 font-black uppercase tracking-[0.1em]">Role</p>
                       <p className={`text-sm font-bold ${user.isAdmin ? 'text-uno-red' : 'text-uno-green'}`}>
-                        {user.isAdmin ? 'Admin' : 'Player'}
+                        {fullUser.isAdmin ? 'Admin' : 'Player'}
                       </p>
                     </div>
                   </div>
@@ -152,8 +272,8 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ user, isOpen, onClo
                     <UserX size={16} className="text-gray-500" />
                     <div>
                       <p className="text-[10px] text-gray-600 font-black uppercase tracking-[0.1em]">Ban Status</p>
-                      <p className={`text-sm font-bold ${user.isBanned ? 'text-uno-red' : 'text-uno-green'}`}>
-                        {user.isBanned ? 'Banned' : 'Clean'}
+                      <p className={`text-sm font-bold ${fullUser.isBanned ? 'text-uno-red' : 'text-uno-green'}`}>
+                        {fullUser.isBanned ? 'Banned' : 'Clean'}
                       </p>
                     </div>
                   </div>
@@ -163,7 +283,7 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ user, isOpen, onClo
               {/* Full UID */}
               <div className="mt-8 pt-6 border-t border-white/5">
                 <p className="text-[10px] text-gray-600 font-black uppercase tracking-[0.2em] mb-2">Full UID</p>
-                <p className="text-xs font-mono text-gray-400 bg-white/5 p-4 rounded-2xl break-all border border-white/5">{user.uid}</p>
+                <p className="text-xs font-mono text-gray-400 bg-white/5 p-4 rounded-2xl break-all border border-white/5">{fullUser.uid}</p>
               </div>
             </div>
           </motion.div>
@@ -172,5 +292,17 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ user, isOpen, onClo
     </AnimatePresence>
   );
 };
+
+function DetailPanel({ title, icon, empty, children }: { title: string; icon: React.ReactNode; empty: string; children: React.ReactNode[] }) {
+  const hasRows = React.Children.count(children) > 0;
+  return (
+    <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+      <h3 className="mb-3 flex items-center gap-2 text-sm font-black uppercase tracking-widest text-gray-300">{icon} {title}</h3>
+      <div className="max-h-72 overflow-y-auto">
+        {hasRows ? children : <p className="py-6 text-center text-sm font-bold text-gray-500">{empty}</p>}
+      </div>
+    </section>
+  );
+}
 
 export default UserProfileModal;
