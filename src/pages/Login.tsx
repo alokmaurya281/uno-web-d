@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { LogIn, ShieldCheck, Mail, Lock, AlertCircle, Globe, Terminal, ChevronDown, ChevronUp, RefreshCw } from 'lucide-react';
-import { getRedirectResult, signInWithEmailAndPassword, signInWithRedirect, GoogleAuthProvider, signOut, type User as FirebaseUser } from 'firebase/auth';
+import { getRedirectResult, onAuthStateChanged, signInWithEmailAndPassword, signInWithRedirect, GoogleAuthProvider, signOut, type User as FirebaseUser } from 'firebase/auth';
 import { auth } from '../firebase/config';
 import { setUser } from '../store/slices/authSlice';
 import type { RootState } from '../store';
@@ -45,6 +45,7 @@ const Login: React.FC = () => {
   const { isAdmin } = useSelector((state: RootState) => state.auth);
   const isMounted = useRef(true);
   const redirectChecked = useRef(false);
+  const verificationUid = useRef<string | null>(null);
 
   const addLog = useCallback((message: string, type: LogEntry['type'] = 'info') => {
     const entry = {
@@ -63,6 +64,8 @@ const Login: React.FC = () => {
 
   const verifyAdmin = useCallback(async (uid: string, user: FirebaseUser) => {
     if (!isMounted.current) return;
+    if (verificationUid.current === uid) return;
+    verificationUid.current = uid;
     setIsProcessing(true);
     setError('');
     
@@ -92,6 +95,7 @@ const Login: React.FC = () => {
     }
 
     if (isMounted.current) {
+      verificationUid.current = null;
       setError('Access Denied: Administrative privileges not found.');
       addLog("Backend admin check failed.", 'error');
       await signOut(auth);
@@ -129,6 +133,16 @@ const Login: React.FC = () => {
 
     completeGoogleRedirect();
   }, [addLog, verifyAdmin]);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (!user || !isMounted.current || isAdmin) return;
+      addLog(`Firebase session detected: ${user.email}`);
+      await verifyAdmin(user.uid, user);
+    });
+
+    return () => unsubscribe();
+  }, [addLog, isAdmin, verifyAdmin]);
 
   // Global Redirect if isAdmin becomes true
   useEffect(() => {
