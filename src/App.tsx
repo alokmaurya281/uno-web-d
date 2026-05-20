@@ -27,6 +27,13 @@ function App() {
     dispatch(setLoading(true));
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
+        // Skip admin verification on the login page — Login.tsx handles its own flow
+        if (window.location.pathname === '/admin-login') {
+          console.log('[App] Auth state changed on login page — deferring to Login.tsx');
+          dispatch(setLoading(false));
+          return;
+        }
+
         try {
           const profile = await getMe();
           const admin = profile.user?.isAdmin === true;
@@ -41,7 +48,17 @@ function App() {
           }));
         } catch (err) {
           console.error("Auth persistence error:", err);
-          dispatch(logout());
+          // Don't logout on error — just mark as non-admin and stop loading.
+          // The user may still be authenticated, just the backend API may be unreachable.
+          dispatch(setUser({
+            user: {
+              uid: user.uid,
+              email: user.email,
+              displayName: user.displayName,
+              photoURL: user.photoURL
+            },
+            isAdmin: false
+          }));
         }
       } else {
         dispatch(logout());

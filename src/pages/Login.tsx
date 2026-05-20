@@ -1,9 +1,9 @@
 import React, { useCallback, useState, useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { LogIn, ShieldCheck, Mail, Lock, AlertCircle, Globe, Terminal, ChevronDown, ChevronUp, RefreshCw } from 'lucide-react';
-import { getRedirectResult, onAuthStateChanged, signInWithEmailAndPassword, signInWithRedirect, GoogleAuthProvider, signOut, type User as FirebaseUser } from 'firebase/auth';
+import { getRedirectResult, signInWithEmailAndPassword, signInWithPopup, signInWithRedirect, GoogleAuthProvider, signOut, type User as FirebaseUser } from 'firebase/auth';
 import { auth } from '../firebase/config';
 import { setUser } from '../store/slices/authSlice';
 import type { RootState } from '../store';
@@ -28,6 +28,10 @@ function adminTarget(state: unknown) {
   return from && from !== '/admin-login' ? from : '/admin';
 }
 
+function redirectToAdmin(target: string) {
+  window.location.replace(target);
+}
+
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -35,17 +39,16 @@ const Login: React.FC = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [logs, setLogs] = useState<LogEntry[]>([
     { timestamp: new Date().toLocaleTimeString(), message: 'Diagnostic console initialized.', type: 'info' },
-    { timestamp: new Date().toLocaleTimeString(), message: 'Ready for Login. Redirect mode enabled.', type: 'info' },
+    { timestamp: new Date().toLocaleTimeString(), message: 'Ready for Login. Popup mode enabled.', type: 'info' },
   ]);
-  const [showConsole, setShowConsole] = useState(true); // Keep it open during troubleshooting
+  const [showConsole, setShowConsole] = useState(true);
   
   const dispatch = useDispatch();
-  const navigate = useNavigate();
   const location = useLocation();
   const { isAdmin } = useSelector((state: RootState) => state.auth);
   const isMounted = useRef(true);
   const redirectChecked = useRef(false);
-  const verificationUid = useRef<string | null>(null);
+  const verifyInProgress = useRef(false);
 
   const addLog = useCallback((message: string, type: LogEntry['type'] = 'info') => {
     const entry = {
@@ -64,8 +67,12 @@ const Login: React.FC = () => {
 
   const verifyAdmin = useCallback(async (uid: string, user: FirebaseUser) => {
     if (!isMounted.current) return;
-    if (verificationUid.current === uid) return;
-    verificationUid.current = uid;
+    // Prevent concurrent verification calls
+    if (verifyInProgress.current) {
+      addLog(`Verification already in progress — skipping duplicate for ${user.email}`);
+      return;
+    }
+    verifyInProgress.current = true;
     setIsProcessing(true);
     setError('');
     
@@ -75,8 +82,11 @@ const Login: React.FC = () => {
     try {
       addLog("[API] Requesting admin profile from backend...");
       const response = await getMe();
-      addLog(`[API] isAdmin: ${response.user?.isAdmin}`, response.user?.isAdmin ? 'success' : 'warn');
+      addLog(`[API] Response received — isAdmin: ${response.user?.isAdmin}`, response.user?.isAdmin ? 'success' : 'warn');
+      addLog(`[API] User email: ${response.user?.email}, name: ${response.user?.name}`, 'info');
+      
       if (response.user?.isAdmin === true) {
+        addLog("✅ Admin verified! Redirecting to dashboard...", 'success');
         dispatch(setUser({
           user: {
             uid,
@@ -86,30 +96,37 @@ const Login: React.FC = () => {
           },
           isAdmin: true,
         }));
+        verifyInProgress.current = false;
         setIsProcessing(false);
-        navigate(adminTarget(location.state), { replace: true });
+        redirectToAdmin(adminTarget(location.state));
         return;
       }
+
+      // User exists but is NOT admin
+      addLog(`❌ User found but isAdmin=${response.user?.isAdmin}. This account does not have admin privileges.`, 'error');
+      addLog("To fix: Set isAdmin=true for this user in MongoDB, then try again.", 'warn');
     } catch (err: unknown) {
-      addLog(`[API] ${errorMessage(err)}`, 'error');
+      addLog(`[API ERROR] ${errorMessage(err)}`, 'error');
+      addLog("Could not reach backend API — check if server is running and CORS is configured.", 'error');
     }
 
     if (isMounted.current) {
-      verificationUid.current = null;
-      setError('Access Denied: Administrative privileges not found.');
-      addLog("Backend admin check failed.", 'error');
+      verifyInProgress.current = false;
+      setError('Access Denied: This account does not have admin privileges. Check the diagnostic console for details.');
       await signOut(auth);
       dispatch(setUser({ user: null, isAdmin: false }));
       setIsProcessing(false);
     }
-  }, [addLog, dispatch, location.state, navigate]);
+  }, [addLog, dispatch, location.state]);
 
+  // Handle Google redirect result (for cases where popup was blocked and redirect was used)
   useEffect(() => {
     if (redirectChecked.current) return;
     redirectChecked.current = true;
 
     const completeGoogleRedirect = async () => {
       try {
+        addLog("Checking for pending Google redirect result...");
         const result = await getRedirectResult(auth);
         if (result && isMounted.current) {
           setIsProcessing(true);
@@ -118,14 +135,17 @@ const Login: React.FC = () => {
           return;
         }
 
+        // No redirect result — check if there's already a logged-in user
         if (auth.currentUser && isMounted.current) {
-          addLog(`Existing Firebase session: ${auth.currentUser.email}`);
+          addLog(`Existing Firebase session found: ${auth.currentUser.email}`);
           await verifyAdmin(auth.currentUser.uid, auth.currentUser);
+        } else {
+          addLog("No existing session. Waiting for login.", 'info');
         }
       } catch (err: unknown) {
         if (isMounted.current) {
           setIsProcessing(false);
-          addLog(`Google redirect error: ${errorMessage(err)}`, 'error');
+          addLog(`Google redirect check error: ${errorMessage(err)}`, 'error');
           setError('Google login failed or cancelled.');
         }
       }
@@ -134,27 +154,19 @@ const Login: React.FC = () => {
     completeGoogleRedirect();
   }, [addLog, verifyAdmin]);
 
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (!user || !isMounted.current || isAdmin) return;
-      addLog(`Firebase session detected: ${user.email}`);
-      await verifyAdmin(user.uid, user);
-    });
-
-    return () => unsubscribe();
-  }, [addLog, isAdmin, verifyAdmin]);
+  // DO NOT add onAuthStateChanged here — it races with the popup/redirect handlers
+  // App.tsx already skips the login page, so we don't need a listener here.
 
   // Global Redirect if isAdmin becomes true
   useEffect(() => {
     if (isAdmin) {
-      // Use a small timeout to ensure Redux state is settled and logs are visible
       const timer = setTimeout(() => {
-        navigate(adminTarget(location.state), { replace: true });
+        redirectToAdmin(adminTarget(location.state));
       }, 500);
       
       return () => clearTimeout(timer);
     }
-  }, [isAdmin, navigate, location.state]);
+  }, [isAdmin, location.state]);
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -164,7 +176,7 @@ const Login: React.FC = () => {
 
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      addLog("Email login success. Verifying role...", 'success');
+      addLog("Email login success. Verifying admin role...", 'success');
       await verifyAdmin(userCredential.user.uid, userCredential.user);
     } catch (err: unknown) {
       if (isMounted.current) {
@@ -178,15 +190,24 @@ const Login: React.FC = () => {
   const handleGoogleLogin = async () => {
     setError('');
     setIsProcessing(true);
-    addLog("Redirecting to Google Sign-In...");
+    addLog("Opening Google Sign-In popup...");
     const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: 'select_account' });
 
     try {
-      await signInWithRedirect(auth, provider);
+      const result = await signInWithPopup(auth, provider);
+      addLog(`Google sign-in success: ${result.user.email}`, 'success');
+      await verifyAdmin(result.user.uid, result.user);
     } catch (err: unknown) {
+      const code = typeof err === 'object' && err && 'code' in err ? String((err as { code?: string }).code || '') : '';
+      if (code === 'auth/popup-blocked' || code === 'auth/cancelled-popup-request') {
+        addLog("Popup unavailable. Falling back to redirect mode...", 'warn');
+        await signInWithRedirect(auth, provider);
+        return;
+      }
       if (isMounted.current) {
         setIsProcessing(false);
-        addLog(`Google redirect start error: ${errorMessage(err)}`, 'error');
+        addLog(`Google sign-in error (${code}): ${errorMessage(err)}`, 'error');
         setError('Google login failed or cancelled.');
       }
     }
