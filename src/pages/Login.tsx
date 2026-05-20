@@ -23,6 +23,11 @@ function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : 'Unexpected error.';
 }
 
+function adminTarget(state: unknown) {
+  const from = (state as LoginLocationState | null)?.from?.pathname;
+  return from && from !== '/admin-login' ? from : '/admin';
+}
+
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -52,6 +57,7 @@ const Login: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    isMounted.current = true;
     return () => { isMounted.current = false; };
   }, []);
 
@@ -77,6 +83,8 @@ const Login: React.FC = () => {
           },
           isAdmin: true,
         }));
+        setIsProcessing(false);
+        navigate(adminTarget(location.state), { replace: true });
         return;
       }
     } catch (err: unknown) {
@@ -90,7 +98,7 @@ const Login: React.FC = () => {
       dispatch(setUser({ user: null, isAdmin: false }));
       setIsProcessing(false);
     }
-  }, [addLog, dispatch]);
+  }, [addLog, dispatch, location.state, navigate]);
 
   useEffect(() => {
     if (redirectChecked.current) return;
@@ -99,11 +107,17 @@ const Login: React.FC = () => {
     const completeGoogleRedirect = async () => {
       try {
         const result = await getRedirectResult(auth);
-        if (!result || !isMounted.current) return;
+        if (result && isMounted.current) {
+          setIsProcessing(true);
+          addLog(`Google redirect success: ${result.user.email}`, 'success');
+          await verifyAdmin(result.user.uid, result.user);
+          return;
+        }
 
-        setIsProcessing(true);
-        addLog(`Google redirect success: ${result.user.email}`, 'success');
-        await verifyAdmin(result.user.uid, result.user);
+        if (auth.currentUser && isMounted.current) {
+          addLog(`Existing Firebase session: ${auth.currentUser.email}`);
+          await verifyAdmin(auth.currentUser.uid, auth.currentUser);
+        }
       } catch (err: unknown) {
         if (isMounted.current) {
           setIsProcessing(false);
@@ -119,11 +133,9 @@ const Login: React.FC = () => {
   // Global Redirect if isAdmin becomes true
   useEffect(() => {
     if (isAdmin) {
-      const target = (location.state as LoginLocationState | null)?.from?.pathname || '/admin';
-      
       // Use a small timeout to ensure Redux state is settled and logs are visible
       const timer = setTimeout(() => {
-        navigate(target, { replace: true });
+        navigate(adminTarget(location.state), { replace: true });
       }, 500);
       
       return () => clearTimeout(timer);
