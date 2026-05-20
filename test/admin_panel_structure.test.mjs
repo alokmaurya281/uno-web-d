@@ -94,5 +94,8 @@ test('settings admin page exposes structured no-json config editors', () => {
 
   assert.match(api, /getSeasons/);
   assert.match(api, /saveSeason/);
+  assert.match(api, /seedPassSeasons/);
   assert.match(api, /\/api\/admin\/seasons/);
+  assert.match(api, /\/api\/admin\/seasons\/seed/);
+  assert.match(settings, /Seed 7 Seasons/);
 });
