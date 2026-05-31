@@ -300,3 +300,42 @@ export function seedPassSeasons(count = 7) {
     body: JSON.stringify({ count }),
   });
 }
+
+export interface AdminBotProfile {
+  _id: string;
+  botId: string;
+  name: string;
+  avatarUrl?: string;
+  region: string;
+  skillLevel: number;
+  personality: string;
+  isActive: boolean;
+  baseWinRate: number;
+  playSpeedMs: number;
+  mistakeRate: number;
+  emoteFrequency: number;
+  totalGames: number;
+  wins: number;
+}
+
+export async function getBots(skip = 0, limit = 50) {
+  const params = new URLSearchParams({ skip: String(skip), limit: String(limit) });
+  const response = await requestJson<{ success: boolean; bots: AdminBotProfile[]; pagination: unknown }>(`/api/admin/bots?${params}`);
+  return { ...response, ok: response.success };
+}
+
+export async function updateBotProfile(botId: string, patch: Partial<AdminBotProfile>) {
+  const response = await requestJson<{ success: boolean; bot: AdminBotProfile }>(`/api/admin/bots/${encodeURIComponent(botId)}`, {
+    method: 'PATCH',
+    body: JSON.stringify(patch)
+  });
+  return { ...response, ok: response.success };
+}
+
+export async function triggerBotSeeding(force = false) {
+  const response = await requestJson<{ success: boolean; message: string; seededCount?: number }>('/api/admin/bots/seed', {
+    method: 'POST',
+    body: JSON.stringify({ force })
+  });
+  return { ...response, ok: response.success };
+}
