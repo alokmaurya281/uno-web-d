@@ -127,6 +127,9 @@ const RoomsManagement: React.FC = () => {
                 <div className="flex items-center gap-3">
                   <span className="rounded bg-uno-red/10 px-2 py-1 text-xs font-black text-uno-red">#{room.roomCode || room.id.slice(0, 6)}</span>
                   <span className="rounded bg-white/5 px-2 py-1 text-[10px] font-black uppercase text-gray-300">{room.status}</span>
+                  {inactiveRooms.some((r) => r.id === room.id) && (
+                    <span className="rounded bg-uno-yellow/10 px-2 py-1 text-[10px] font-black uppercase text-uno-yellow">Inactive</span>
+                  )}
                   {!room.isPublic && <Lock size={14} className="text-uno-yellow" />}
                 </div>
                 <p className="mt-3 truncate font-bold text-white">{room.hostName || 'Unknown host'}</p>

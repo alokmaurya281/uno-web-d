@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Bell, CheckCircle2, ChevronDown, FileJson, Plus, RefreshCw, Save, Send, Sparkles, Trash2 } from 'lucide-react';
+import { Bell, CheckCircle2, ChevronDown, FileJson, Plus, RefreshCw, Save, Send, Sparkles, Trash2, Users } from 'lucide-react';
 import {
   getConfig,
   getSeasons,
@@ -9,6 +9,9 @@ import {
   saveSeason,
   seedPassSeasons,
   sendNotification,
+  getBots,
+  triggerBotSeeding,
+  type AdminBotProfile,
   type AdminConfigSummary,
   type AdminSeason,
 } from '../../services/adminApi';
@@ -48,6 +51,7 @@ const Settings: React.FC = () => {
   const [selectedSeason, setSelectedSeason] = useState(0);
   const [seasonWarnings, setSeasonWarnings] = useState<ConfigMap[]>([]);
   const [notification, setNotification] = useState({ title: '', body: '', targetEmails: '', inApp: true, push: true, inAppStyle: 'popup' as 'popup' | 'banner' });
+  const [bots, setBots] = useState<AdminBotProfile[]>([]);
 
   const loadList = useCallback(async () => {
     const response = await listConfigs();
@@ -79,13 +83,23 @@ const Settings: React.FC = () => {
     }
   }, []);
 
+  const loadBots = useCallback(async () => {
+    try {
+      const response = await getBots();
+      setBots(response.bots || []);
+    } catch {
+      setBots([]);
+    }
+  }, []);
+
   useEffect(() => {
     void loadConfig(selectedId);
   }, [loadConfig, selectedId]);
 
   useEffect(() => {
     void loadSeasons();
-  }, [loadSeasons]);
+    void loadBots();
+  }, [loadSeasons, loadBots]);
 
   const updateSettings = (next: ConfigMap) => {
     setSettings(next);
@@ -162,6 +176,20 @@ const Settings: React.FC = () => {
       setMessage(warnings.length > 0 ? `Season saved with ${warnings.length} reward replacement warning(s).` : 'Season saved.');
     } catch (err) {
       setMessage(err instanceof Error ? err.message : 'Season save failed.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const seedBots = async () => {
+    setSaving(true);
+    setMessage('');
+    try {
+      const response = await triggerBotSeeding(true);
+      setMessage(`Bots seeded: ${response.message}`);
+      await loadBots();
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : 'Bot seed failed.');
     } finally {
       setSaving(false);
     }
@@ -250,6 +278,30 @@ const Settings: React.FC = () => {
             </button>
             <button onClick={() => void transitionPass()} className="rounded-lg bg-white/5 px-4 py-3 text-xs font-black uppercase tracking-widest hover:bg-white/10">
               Run Season Transition
+            </button>
+          </div>
+        </section>
+      </div>
+
+      <div className="grid gap-6 xl:grid-cols-1">
+        <section className="rounded-lg border border-white/10 bg-white/[0.03] p-5">
+          <h2 className="mb-4 flex items-center gap-2 text-lg font-black"><Users className="text-uno-green" /> Bot AI Players</h2>
+          <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+            {bots.map((bot) => (
+              <div key={bot.botId} className="rounded-lg border border-white/10 bg-black/20 p-4">
+                <h3 className="font-bold text-white">{bot.name} <span className="text-xs text-gray-500">#{bot.botId}</span></h3>
+                <p className="mt-1 text-xs text-gray-400">Personality: {bot.personality}</p>
+                <div className="mt-3 flex items-center justify-between text-xs">
+                  <span className={bot.isActive ? "text-uno-green" : "text-gray-500"}>{bot.isActive ? "Active" : "Inactive"}</span>
+                  <span className="text-gray-400">Win: {(bot.baseWinRate * 100).toFixed(0)}%</span>
+                </div>
+              </div>
+            ))}
+          </div>
+          {bots.length === 0 && <p className="text-sm text-gray-500">No bots loaded.</p>}
+          <div className="mt-4 flex gap-2">
+            <button onClick={() => void seedBots()} disabled={saving} className="rounded-lg bg-uno-green px-4 py-3 text-xs font-black uppercase tracking-widest text-white disabled:opacity-50">
+              Re-seed All Bots
             </button>
           </div>
         </section>
