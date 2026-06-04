@@ -173,7 +173,7 @@ const LogsViewer: React.FC = () => {
         <div className="flex items-center gap-3 rounded-lg border border-yellow-500/20 bg-yellow-500/5 p-4 text-sm text-yellow-500">
           <AlertCircle size={20} className="flex-shrink-0" />
           <div>
-            <span className="font-bold">Large log file:</span> The logs have been truncated to the last 5MB of entries to protect performance. Use the <strong>Download</strong> button to retrieve the full file.
+            <span className="font-bold">Large log file:</span> The logs have been truncated to the last 20MB of entries to protect performance. Use the <strong>Download</strong> button to retrieve the full file.
           </div>
         </div>
       )}
