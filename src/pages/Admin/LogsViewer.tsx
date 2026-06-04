@@ -265,7 +265,7 @@ const LogsViewer: React.FC = () => {
         {/* Console Box */}
         <pre 
           ref={containerRef}
-          className="flex-1 overflow-y-auto p-4 font-mono text-xs leading-relaxed text-gray-300 break-all select-text space-y-1.5 scrollbar-thin"
+          className="flex-1 overflow-y-auto p-4 font-mono text-xs leading-relaxed text-gray-300 break-all select-text space-y-1.5 scrollbar-thin whitespace-pre-wrap"
         >
           {processedLines.map((line, idx) => {
             if (line.isJson && line.parsed) {
@@ -279,10 +279,10 @@ const LogsViewer: React.FC = () => {
                   <span className="font-bold flex-shrink-0 uppercase tracking-widest text-[9px] border border-current px-1 rounded leading-none pt-[3px] pb-[2px]">{level}</span>
                   
                   {/* Content details */}
-                  <div className="flex-1">
+                  <div className="flex-1 min-w-0 break-all whitespace-pre-wrap">
                     <span className="font-black text-white">{event}</span>
                     {Object.keys(meta).length > 0 && (
-                      <span className="text-gray-400 ml-2 text-[11px] font-light">
+                      <span className="text-gray-400 ml-2 text-[11px] font-light break-all whitespace-pre-wrap">
                         {JSON.stringify(meta)}
                       </span>
                     )}
@@ -291,7 +291,7 @@ const LogsViewer: React.FC = () => {
               );
             } else {
               return (
-                <div key={idx} className="p-1 rounded bg-white/[0.01] border border-white/5 font-mono text-gray-400">
+                <div key={idx} className="p-1 rounded bg-white/[0.01] border border-white/5 font-mono text-gray-400 break-all whitespace-pre-wrap">
                   {line.message}
                 </div>
               );
