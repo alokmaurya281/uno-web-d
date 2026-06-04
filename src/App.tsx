@@ -19,6 +19,7 @@ import Settings from './pages/Admin/Settings';
 import SupportTickets from './pages/Admin/SupportTickets';
 import AccountDeletionRequests from './pages/Admin/AccountDeletionRequests';
 import Transactions from './pages/Admin/Transactions';
+import LogsViewer from './pages/Admin/LogsViewer';
 
 function App() {
   const dispatch = useDispatch();
@@ -94,6 +95,7 @@ function App() {
           <Route path="support" element={<SupportTickets />} />
           <Route path="account-deletion-requests" element={<AccountDeletionRequests />} />
           <Route path="transactions" element={<Transactions />} />
+          <Route path="logs" element={<LogsViewer />} />
           <Route path="settings" element={<Settings />} />
         </Route>
 

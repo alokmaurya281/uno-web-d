@@ -147,6 +147,10 @@ export function getOverview() {
   return requestJson<{ ok: boolean; overview: Record<string, unknown> }>('/api/admin/overview');
 }
 
+export function getLogs() {
+  return requestJson<{ ok: boolean; logs: string; truncated: boolean }>('/api/admin/logs');
+}
+
 export function getLiveRooms() {
   return requestJson<{ ok: boolean; live: { roomList?: LiveRoom[]; [key: string]: unknown } }>('/api/admin/live-rooms');
 }
