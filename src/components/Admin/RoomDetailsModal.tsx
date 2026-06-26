@@ -13,10 +13,12 @@ import {
 
 interface RoomPlayer {
   uid?: string;
+  id?: string;
   name?: string;
   isHost?: boolean;
   status?: string;
-  joinedAt?: number;
+  joinedAt?: string | number | null;
+  isBot?: boolean;
 }
 
 interface RoomDetails {
@@ -29,7 +31,7 @@ interface RoomDetails {
   isPrivate: boolean;
   createdAt: number;
   gameMode?: string;
-  players?: Record<string, RoomPlayer>;
+  players?: Record<string, RoomPlayer> | RoomPlayer[];
   roomCode?: string;
   hostUid?: string;
   autoDisposeAt?: number | string;
@@ -41,6 +43,7 @@ interface NormalizedRoomPlayer {
   isHost: boolean;
   status: string;
   joinedAt: number;
+  isBot: boolean;
 }
 
 interface RoomDetailsModalProps {
@@ -62,13 +65,24 @@ const RoomDetailsModal: React.FC<RoomDetailsModalProps> = ({ room, isOpen, onClo
 
   // Real player list from RTDB players object
   const players: NormalizedRoomPlayer[] = room.players
-    ? Object.values(room.players).map((p) => ({
-        uid: p.uid || '',
-        name: p.name || 'Unknown',
-        isHost: !!p.isHost,
-        status: p.status || 'unknown',
-        joinedAt: p.joinedAt || 0,
-      }))
+    ? (Array.isArray(room.players) ? room.players : Object.values(room.players)).map((p) => {
+        const uid = p.uid || p.id || '';
+        let joinedAtMs = 0;
+        if (typeof p.joinedAt === 'number') {
+          joinedAtMs = p.joinedAt;
+        } else if (p.joinedAt) {
+          const parsed = Date.parse(p.joinedAt);
+          if (!isNaN(parsed)) joinedAtMs = parsed;
+        }
+        return {
+          uid,
+          name: p.name || 'Unknown',
+          isHost: !!p.isHost,
+          status: p.status || 'unknown',
+          joinedAt: joinedAtMs,
+          isBot: !!p.isBot || (typeof uid === 'string' && uid.startsWith('bot_')),
+        };
+      })
     : [];
 
   // Real elapsed time
@@ -177,7 +191,13 @@ const RoomDetailsModal: React.FC<RoomDetailsModalProps> = ({ room, isOpen, onClo
                     </div>
                     <div>
                       <p className="font-bold text-white flex items-center gap-2">
-                        {p.name} {p.isHost && <Shield size={12} className="text-uno-red" />}
+                        {p.name}
+                        {p.isHost && <Shield size={12} className="text-uno-red" />}
+                        {p.isBot && (
+                          <span className="rounded bg-uno-yellow/15 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wider text-uno-yellow border border-uno-yellow/20">
+                            BOT
+                          </span>
+                        )}
                       </p>
                       <p className={`text-[10px] font-black uppercase tracking-widest leading-none mt-1 ${
                         p.status === 'quit' || p.status === 'disconnected' ? 'text-uno-red' : 'text-gray-500'

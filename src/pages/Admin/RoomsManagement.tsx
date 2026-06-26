@@ -123,7 +123,7 @@ const RoomsManagement: React.FC = () => {
         {filteredRooms.map((room) => (
           <div key={room.id} className="rounded-lg border border-white/10 bg-white/[0.03] p-5">
             <div className="flex items-start justify-between gap-4">
-              <button onClick={() => setSelectedRoom(room)} className="min-w-0 text-left">
+              <button onClick={() => setSelectedRoom(room)} className="min-w-0 w-full text-left">
                 <div className="flex items-center gap-3">
                   <span className="rounded bg-uno-red/10 px-2 py-1 text-xs font-black text-uno-red">#{room.roomCode || room.id.slice(0, 6)}</span>
                   <span className="rounded bg-white/5 px-2 py-1 text-[10px] font-black uppercase text-gray-300">{room.status}</span>
@@ -132,10 +132,24 @@ const RoomsManagement: React.FC = () => {
                   )}
                   {!room.isPublic && <Lock size={14} className="text-uno-yellow" />}
                 </div>
-                <p className="mt-3 truncate font-bold text-white">{room.hostName || 'Unknown host'}</p>
+                <p className="mt-3 truncate font-bold text-white">Host: {room.hostName || 'Unknown host'}</p>
                 <p className="text-xs text-gray-500">{room.playerCount}/{room.maxPlayers} players · {room.id}</p>
+                
+                {room.players && room.players.length > 0 && (
+                  <div className="mt-3 flex flex-wrap gap-1.5 items-center">
+                    <span className="text-[10px] text-gray-400 font-bold uppercase mr-1">Roster:</span>
+                    {room.players.map((p, idx) => (
+                      <span key={p.id || idx} className={`inline-flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-black uppercase tracking-wider ${
+                        p.isHost ? 'bg-uno-red/25 text-uno-red border border-uno-red/35' : 'bg-white/5 text-gray-300'
+                      }`}>
+                        {p.name}
+                        {p.isBot && <span className="text-[8px] bg-uno-yellow/20 text-uno-yellow px-1 rounded-sm">BOT</span>}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </button>
-              <button onClick={() => void deleteRoom(room)} className="rounded-lg bg-uno-red/10 p-2 text-uno-red hover:bg-uno-red/20" title="Close room">
+              <button onClick={() => void deleteRoom(room)} className="rounded-lg bg-uno-red/10 p-2 text-uno-red hover:bg-uno-red/20 shrink-0" title="Close room">
                 <Trash2 size={17} />
               </button>
             </div>
@@ -161,7 +175,7 @@ const RoomsManagement: React.FC = () => {
           isPrivate: !selectedRoom.isPublic,
           createdAt: Number(selectedRoom.createdAt || 0),
           gameMode: 'Socket',
-          players: {},
+          players: selectedRoom.players || [],
         } : null}
       />
     </div>
