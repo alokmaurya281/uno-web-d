@@ -169,6 +169,13 @@ export function closeRoom(roomId: string) {
   });
 }
 
+export function bulkCloseRooms(roomIds: string[]) {
+  return requestJson<{ ok: boolean; closedCount: number; results: Array<{ closed: boolean; roomId: string }> }>('/api/admin/live-rooms/bulk-delete', {
+    method: 'POST',
+    body: JSON.stringify({ roomIds }),
+  });
+}
+
 export function cleanupInactiveRooms() {
   return requestJson<{ ok: boolean; removedCount: number; removedRooms: Array<{ roomId: string; roomCode?: string; status?: string }> }>('/api/admin/live-rooms/cleanup-inactive', {
     method: 'POST',
