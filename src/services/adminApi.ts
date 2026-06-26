@@ -37,6 +37,14 @@ export interface LiveRoom {
   hostName: string;
   createdAt?: string | number | null;
   updatedAt?: string | number | null;
+  players?: Array<{
+    id: string;
+    name: string;
+    isHost: boolean;
+    status: string;
+    joinedAt?: string | number | null;
+    isBot: boolean;
+  }>;
 }
 
 export interface AdminConfigSummary {
