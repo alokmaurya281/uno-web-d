@@ -54,16 +54,55 @@ export interface AdminConfigSummary {
   updatedAt?: string | null;
 }
 
+export interface RewardModel {
+  type: string;
+  itemId?: string;
+  amount?: number;
+  label: string;
+  assetPath?: string;
+}
+
+export interface AdminSeasonReward {
+  id?: string;
+  level: number;
+  freeReward: RewardModel;
+  premiumReward: RewardModel;
+}
+
+export interface AdminSeasonMission {
+  id: string;
+  title: string;
+  description: string;
+  triggerKey: string;
+  target: number;
+  xpReward: number;
+  sortOrder: number;
+  enabled: boolean;
+}
+
+export interface AdminSeasonPurchaseOption {
+  id: string;
+  productId: string;
+  label: string;
+  levelSkips: number;
+  iapPrice: Record<string, string>;
+}
+
 export interface AdminSeason {
   id?: string;
   seasonId?: string;
   title?: string;
   seasonNumber?: number;
   isActive?: boolean;
-  startsAt?: string;
-  endsAt?: string;
-  rewards?: Array<Record<string, unknown>>;
-  missions?: Array<Record<string, unknown>>;
+  startDate?: string;
+  endDate?: string;
+  gracePeriodDays?: number;
+  xpPerLevel?: number;
+  totalLevels?: number;
+  theme?: string;
+  purchaseOptions?: AdminSeasonPurchaseOption[];
+  rewards?: AdminSeasonReward[];
+  missions?: AdminSeasonMission[];
   rewardWarnings?: Array<Record<string, unknown>>;
   [key: string]: unknown;
 }

@@ -560,6 +560,171 @@ function SpinnerSegmentsEditor({ rows, onChange }: { rows: ConfigMap[]; onChange
   );
 }
 
+function PurchaseOptionsEditor({ options, onChange }: { options: any[]; onChange: (next: any[]) => void }) {
+  const updateOption = (index: number, key: string, val: any) => {
+    onChange(options.map((opt, i) => i === index ? { ...opt, [key]: val } : opt));
+  };
+  const updatePrice = (index: number, region: string, val: string) => {
+    const opt = options[index];
+    const nextPrice = { ...asRecord(opt.iapPrice), [region]: val };
+    updateOption(index, 'iapPrice', nextPrice);
+  };
+  const addOption = () => {
+    onChange([...options, { id: 'custom_pass', productId: 'uno.pass.current', label: 'UNO Pass', levelSkips: 0, iapPrice: { IN: '₹199', US: '$2.99' } }]);
+  };
+  const removeOption = (index: number) => {
+    onChange(options.filter((_, i) => i !== index));
+  };
+
+  return (
+    <Panel title="Purchase Options">
+      <div className="space-y-3">
+        {options.map((opt, index) => (
+          <div key={index} className="rounded border border-white/10 bg-black/20 p-3 space-y-2">
+            <div className="flex justify-between items-center">
+              <h4 className="text-xs font-black uppercase text-uno-blue">Option #{index + 1}</h4>
+              <button onClick={() => removeOption(index)} className="text-red-400 hover:text-red-300 text-xs"><Trash2 size={14} /></button>
+            </div>
+            <FieldGrid>
+              <TextField label="ID (e.g. pass)" value={readString(opt.id)} onChange={(val) => updateOption(index, 'id', val)} />
+              <TextField label="Product ID" value={readString(opt.productId)} onChange={(val) => updateOption(index, 'productId', val)} />
+              <TextField label="Label" value={readString(opt.label)} onChange={(val) => updateOption(index, 'label', val)} />
+              <NumberField label="Level Skips" value={readNumber(opt.levelSkips)} onChange={(val) => updateOption(index, 'levelSkips', val)} />
+              <TextField label="Price IN (e.g. ₹199)" value={readString(asRecord(opt.iapPrice).IN)} onChange={(val) => updatePrice(index, 'IN', val)} />
+              <TextField label="Price US (e.g. $2.99)" value={readString(asRecord(opt.iapPrice).US)} onChange={(val) => updatePrice(index, 'US', val)} />
+            </FieldGrid>
+          </div>
+        ))}
+        <button onClick={addOption} className="inline-flex items-center gap-1 rounded bg-white/10 px-2 py-1 text-xs hover:bg-white/15"><Plus size={12} /> Add Option</button>
+      </div>
+    </Panel>
+  );
+}
+
+function SeasonRewardsEditor({ rewards, onChange, totalLevels }: { rewards: any[]; onChange: (next: any[]) => void; totalLevels: number }) {
+  const [selectedLevel, setSelectedLevel] = useState(1);
+  
+  // Normalize rewards so we have exactly the count of totalLevels
+  const normalizedRewards = Array.from({ length: totalLevels }, (_, i) => {
+    const lvlNum = i + 1;
+    const existing = rewards.find(r => readNumber(r.level) === lvlNum) || {};
+    return {
+      level: lvlNum,
+      freeReward: asRecord(existing.freeReward || existing),
+      premiumReward: asRecord(existing.premiumReward)
+    };
+  });
+
+  const updateReward = (key: 'freeReward' | 'premiumReward', field: string, val: any) => {
+    const nextRewards = normalizedRewards.map((r, idx) => {
+      if (idx === selectedLevel - 1) {
+        const rewardObj = { ...asRecord(r[key]), [field]: val };
+        return { ...r, [key]: rewardObj };
+      }
+      return r;
+    });
+    onChange(nextRewards);
+  };
+
+  const initializeDefaultRewards = () => {
+    const defaultRewards = Array.from({ length: totalLevels }, (_, i) => {
+      const lvl = i + 1;
+      return {
+        level: lvl,
+        freeReward: { type: 'coins', amount: 50, label: '50 Coins', assetPath: 'assets/images/store/coins.svg' },
+        premiumReward: { type: 'coins', amount: 200, label: '200 Coins', assetPath: 'assets/images/store/coins.svg' }
+      };
+    });
+    onChange(defaultRewards);
+  };
+
+  const activeRow = normalizedRewards[selectedLevel - 1] || { level: selectedLevel, freeReward: {}, premiumReward: {} };
+  const free = activeRow.freeReward || {};
+  const premium = activeRow.premiumReward || {};
+
+  const rewardTypes = ['coins', 'powerUp', 'cardSkin', 'avatarFrame', 'badge', 'title', 'victoryAnimation', 'fragment'];
+
+  return (
+    <Panel title="Rewards Editor (Per-Level)">
+      <div className="space-y-4">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold text-gray-400">Edit Level:</span>
+            <select value={selectedLevel} onChange={(e) => setSelectedLevel(Number(e.target.value))} className="rounded border border-white/10 bg-black/30 px-3 py-1.5 text-sm text-white outline-none">
+              {Array.from({ length: totalLevels }, (_, i) => (
+                <option key={i} value={i + 1}>Level {i + 1}</option>
+              ))}
+            </select>
+          </div>
+          <button onClick={initializeDefaultRewards} className="rounded bg-white/10 px-2 py-1.5 text-[10px] font-black uppercase hover:bg-white/15">Initialize All {totalLevels} Levels</button>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          {/* Free Reward Column */}
+          <div className="rounded border border-white/10 bg-white/[0.02] p-4 space-y-3">
+            <h4 className="text-xs font-black uppercase tracking-wider text-green-400">Free Reward</h4>
+            <SelectField label="Type" value={readString(free.type, 'coins')} options={rewardTypes} onChange={(val) => updateReward('freeReward', 'type', val)} />
+            <TextField label="Item ID (e.g. fire-frame)" value={readString(free.itemId)} onChange={(val) => updateReward('freeReward', 'itemId', val)} />
+            <NumberField label="Amount" value={readNumber(free.amount)} onChange={(val) => updateReward('freeReward', 'amount', val)} />
+            <TextField label="Label" value={readString(free.label)} onChange={(val) => updateReward('freeReward', 'label', val)} />
+            <TextField label="Asset Path" value={readString(free.assetPath)} onChange={(val) => updateReward('freeReward', 'assetPath', val)} />
+          </div>
+
+          {/* Premium Reward Column */}
+          <div className="rounded border border-white/10 bg-white/[0.02] p-4 space-y-3">
+            <h4 className="text-xs font-black uppercase tracking-wider text-uno-yellow">Premium Reward</h4>
+            <SelectField label="Type" value={readString(premium.type, 'coins')} options={rewardTypes} onChange={(val) => updateReward('premiumReward', 'type', val)} />
+            <TextField label="Item ID (e.g. neon-glow)" value={readString(premium.itemId)} onChange={(val) => updateReward('premiumReward', 'itemId', val)} />
+            <NumberField label="Amount" value={readNumber(premium.amount)} onChange={(val) => updateReward('premiumReward', 'amount', val)} />
+            <TextField label="Label" value={readString(premium.label)} onChange={(val) => updateReward('premiumReward', 'label', val)} />
+            <TextField label="Asset Path" value={readString(premium.assetPath)} onChange={(val) => updateReward('premiumReward', 'assetPath', val)} />
+          </div>
+        </div>
+      </div>
+    </Panel>
+  );
+}
+
+function SeasonMissionsEditor({ missions, onChange }: { missions: any[]; onChange: (next: any[]) => void }) {
+  const updateMission = (index: number, key: string, val: any) => {
+    onChange(missions.map((m, i) => i === index ? { ...m, [key]: val } : m));
+  };
+  const addMission = () => {
+    onChange([...missions, { id: 'new_mission', title: 'New Mission', description: 'Mission description.', triggerKey: 'games_played', target: 10, xpReward: 100, sortOrder: missions.length + 1, enabled: true }]);
+  };
+  const removeMission = (index: number) => {
+    onChange(missions.filter((_, i) => i !== index));
+  };
+
+  const triggerKeys = ['games_played', 'games_won', 'draw_four_played', 'uno_called'];
+
+  return (
+    <Panel title="Missions">
+      <div className="space-y-4">
+        {missions.map((m, index) => (
+          <div key={index} className="rounded border border-white/10 bg-black/20 p-3 space-y-3">
+            <div className="flex justify-between items-center">
+              <h4 className="text-xs font-black uppercase text-uno-red">Mission #{index + 1}</h4>
+              <button onClick={() => removeMission(index)} className="text-red-400 hover:text-red-300 text-xs"><Trash2 size={14} /></button>
+            </div>
+            <FieldGrid>
+              <TextField label="ID" value={readString(m.id)} onChange={(val) => updateMission(index, 'id', val)} />
+              <TextField label="Title" value={readString(m.title)} onChange={(val) => updateMission(index, 'title', val)} />
+              <TextField label="Description" value={readString(m.description)} onChange={(val) => updateMission(index, 'description', val)} />
+              <SelectField label="Trigger Key" value={readString(m.triggerKey, 'games_played')} options={triggerKeys} onChange={(val) => updateMission(index, 'triggerKey', val)} />
+              <NumberField label="Target Quantity" value={readNumber(m.target)} onChange={(val) => updateMission(index, 'target', val)} />
+              <NumberField label="XP Reward" value={readNumber(m.xpReward || m.xp)} onChange={(val) => updateMission(index, 'xpReward', val)} />
+              <NumberField label="Sort Order" value={readNumber(m.sortOrder)} onChange={(val) => updateMission(index, 'sortOrder', val)} />
+              <Toggle label="Enabled" checked={m.enabled !== false} onChange={(val) => updateMission(index, 'enabled', val)} />
+            </FieldGrid>
+          </div>
+        ))}
+        <button onClick={addMission} className="inline-flex items-center gap-1 rounded bg-white/10 px-2 py-1 text-xs hover:bg-white/15"><Plus size={12} /> Add Mission</button>
+      </div>
+    </Panel>
+  );
+}
+
 function SeasonEditor({ seasons, selectedSeason, setSelectedSeason, setSeasons, saveCurrentSeason, rewardWarnings }: {
   seasons: AdminSeason[];
   selectedSeason: number;
@@ -568,18 +733,65 @@ function SeasonEditor({ seasons, selectedSeason, setSelectedSeason, setSeasons, 
   saveCurrentSeason: (season: AdminSeason) => Promise<void>;
   rewardWarnings: ConfigMap[];
 }) {
-  const season = seasons[selectedSeason] || { seasonId: `season_${selectedSeason + 1}`, title: 'New Season', rewards: [], missions: [] };
+  const season = seasons[selectedSeason] || { seasonId: `season_${selectedSeason + 1}`, title: 'New Season', rewards: [], missions: [], purchaseOptions: [] };
   const rewards = asList(season.rewards);
   const missions = asList(season.missions);
+  const purchaseOptions = asList(season.purchaseOptions);
+  
   const updateSeason = (next: AdminSeason) => {
     const copy = [...seasons];
     copy[selectedSeason] = next;
     setSeasons(copy.length ? copy : [next]);
   };
+  
   const set = (key: string, next: unknown) => updateSeason({ ...season, [key]: next });
+  
   const addSeason = () => {
-    setSeasons([...seasons, { seasonId: `season_${seasons.length + 1}`, title: 'New Season', seasonNumber: seasons.length + 1, rewards: [], missions: [] }]);
+    const nextNum = seasons.length + 1;
+    const defaultOptions = [
+      {
+        id: 'pass',
+        productId: 'uno.pass.current',
+        label: 'UNO Pass',
+        iapPrice: { IN: '₹199', US: '$2.99' },
+        levelSkips: 0
+      }
+    ];
+    const newSeason: AdminSeason = {
+      seasonId: `season_${nextNum}_custom`,
+      title: `Season ${nextNum}`,
+      seasonNumber: nextNum,
+      isActive: false,
+      theme: 'fire',
+      startDate: new Date().toISOString().split('T')[0],
+      endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      gracePeriodDays: 7,
+      xpPerLevel: 100,
+      totalLevels: 50,
+      purchaseOptions: defaultOptions,
+      rewards: Array.from({ length: 50 }, (_, i) => ({
+        level: i + 1,
+        freeReward: { type: 'coins', amount: 50, label: '50 Coins', assetPath: 'assets/images/store/coins.svg' },
+        premiumReward: { type: 'coins', amount: 200, label: '200 Coins', assetPath: 'assets/images/store/coins.svg' }
+      })),
+      missions: [
+        { id: `season_${nextNum}_play_25`, title: 'Play 25 games', description: 'Complete games during the season.', triggerKey: 'games_played', target: 25, xpReward: 250, sortOrder: 1, enabled: true },
+        { id: `season_${nextNum}_win_10`, title: 'Win 10 games', description: 'Win games in any mode.', triggerKey: 'games_won', target: 10, xpReward: 300, sortOrder: 2, enabled: true }
+      ]
+    };
+    setSeasons([...seasons, newSeason]);
     setSelectedSeason(seasons.length);
+  };
+
+  const formatDate = (val: unknown): string => {
+    if (!val) return '';
+    try {
+      const d = new Date(typeof val === 'number' ? val : String(val));
+      if (!Number.isNaN(d.getTime())) {
+        return d.toISOString().split('T')[0];
+      }
+    } catch (_) {}
+    return String(val);
   };
 
   return (
@@ -588,15 +800,24 @@ function SeasonEditor({ seasons, selectedSeason, setSelectedSeason, setSeasons, 
         {seasons.map((entry, index) => <option key={entry.seasonId || index} value={index}>{entry.title || entry.seasonId || `Season ${index + 1}`}</option>)}
       </select>
       <button onClick={addSeason} className="inline-flex items-center gap-2 rounded bg-white/10 px-3 py-2 text-xs font-black uppercase tracking-widest hover:bg-white/15"><Plus size={14} /> New Season</button>
+      
       <FieldGrid>
         <TextField label="Season ID" value={readString(season.seasonId || season.id)} onChange={(next) => set('seasonId', next)} />
         <TextField label="Title" value={readString(season.title)} onChange={(next) => set('title', next)} />
         <NumberField label="Season Number" value={readNumber(season.seasonNumber, selectedSeason + 1)} onChange={(next) => set('seasonNumber', next)} />
+        <SelectField label="Theme" value={readString(season.theme, 'fire')} options={['fire', 'ocean', 'space', 'neon', 'gold']} onChange={(next) => set('theme', next)} />
+        <TextField label="Starts At (YYYY-MM-DD)" value={formatDate(season.startDate || season.startDateMs || season.startsAt)} onChange={(next) => set('startDate', next)} />
+        <TextField label="Ends At (YYYY-MM-DD)" value={formatDate(season.endDate || season.endDateMs || season.endsAt)} onChange={(next) => set('endDate', next)} />
+        <NumberField label="Grace Period (Days)" value={readNumber(season.gracePeriodDays, 7)} onChange={(next) => set('gracePeriodDays', next)} />
+        <NumberField label="XP Per Level" value={readNumber(season.xpPerLevel, 100)} onChange={(next) => set('xpPerLevel', next)} />
+        <NumberField label="Total Levels" value={readNumber(season.totalLevels, 50)} onChange={(next) => set('totalLevels', next)} />
         <Toggle label="Active" checked={readBool(season.isActive)} onChange={(next) => set('isActive', next)} />
-        <TextField label="Starts At" value={readString(season.startsAt)} onChange={(next) => set('startsAt', next)} />
-        <TextField label="Ends At" value={readString(season.endsAt)} onChange={(next) => set('endsAt', next)} />
       </FieldGrid>
-      <SeasonRows title="Rewards" rows={rewards} keys={['level', 'track', 'type', 'amount', 'label']} onChange={(rows) => set('rewards', rows)} />
+
+      <PurchaseOptionsEditor options={purchaseOptions} onChange={(rows) => set('purchaseOptions', rows)} />
+
+      <SeasonRewardsEditor rewards={rewards} onChange={(rows) => set('rewards', rows)} totalLevels={readNumber(season.totalLevels, 50)} />
+
       {rewardWarnings.length > 0 && (
         <div className="rounded-lg border border-amber-400/30 bg-amber-500/10 p-3 text-xs text-amber-100">
           <p className="mb-2 font-black uppercase tracking-widest">Reward replacements applied</p>
@@ -612,33 +833,12 @@ function SeasonEditor({ seasons, selectedSeason, setSelectedSeason, setSeasons, 
           </div>
         </div>
       )}
-      <SeasonRows title="Missions" rows={missions} keys={['id', 'title', 'type', 'target', 'xp', 'sortOrder']} onChange={(rows) => set('missions', rows)} />
+
+      <SeasonMissionsEditor missions={missions} onChange={(rows) => set('missions', rows)} />
+
       <button onClick={() => void saveCurrentSeason(season)} className="inline-flex items-center gap-2 rounded-lg bg-uno-blue px-4 py-3 text-xs font-black uppercase tracking-widest text-white">
         <Save size={16} /> Save Season
       </button>
-    </div>
-  );
-}
-
-function SeasonRows({ title, rows, keys, onChange }: { title: string; rows: ConfigMap[]; keys: string[]; onChange: (rows: ConfigMap[]) => void }) {
-  const update = (index: number, key: string, next: unknown) => onChange(rows.map((row, rowIndex) => (rowIndex === index ? { ...row, [key]: next } : row)));
-  return (
-    <div>
-      <div className="mb-2 flex items-center justify-between">
-        <h3 className="text-xs font-black uppercase tracking-widest text-gray-400">{title}</h3>
-        <button onClick={() => onChange([...rows, {}])} className="rounded bg-white/10 px-2 py-1 text-[10px] font-black uppercase">Add</button>
-      </div>
-      <div className="max-h-64 space-y-2 overflow-y-auto">
-        {rows.map((row, index) => (
-          <div key={index} className="rounded border border-white/10 bg-black/20 p-2">
-            <FieldGrid>
-              {keys.map((key) => ['level', 'amount', 'target', 'xp', 'sortOrder'].includes(key)
-                ? <NumberField key={key} label={key} value={readNumber(row[key])} onChange={(next) => update(index, key, next)} />
-                : <TextField key={key} label={key} value={readString(row[key])} onChange={(next) => update(index, key, next)} />)}
-            </FieldGrid>
-          </div>
-        ))}
-      </div>
     </div>
   );
 }
