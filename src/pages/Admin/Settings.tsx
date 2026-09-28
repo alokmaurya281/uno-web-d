@@ -560,8 +560,8 @@ function SpinnerSegmentsEditor({ rows, onChange }: { rows: ConfigMap[]; onChange
   );
 }
 
-function PurchaseOptionsEditor({ options, onChange }: { options: any[]; onChange: (next: any[]) => void }) {
-  const updateOption = (index: number, key: string, val: any) => {
+function PurchaseOptionsEditor({ options, onChange }: { options: Record<string, unknown>[]; onChange: (next: Record<string, unknown>[]) => void }) {
+  const updateOption = (index: number, key: string, val: unknown) => {
     onChange(options.map((opt, i) => i === index ? { ...opt, [key]: val } : opt));
   };
   const updatePrice = (index: number, region: string, val: string) => {
@@ -601,7 +601,7 @@ function PurchaseOptionsEditor({ options, onChange }: { options: any[]; onChange
   );
 }
 
-function SeasonRewardsEditor({ rewards, onChange, totalLevels }: { rewards: any[]; onChange: (next: any[]) => void; totalLevels: number }) {
+function SeasonRewardsEditor({ rewards, onChange, totalLevels }: { rewards: Record<string, unknown>[]; onChange: (next: Record<string, unknown>[]) => void; totalLevels: number }) {
   const [selectedLevel, setSelectedLevel] = useState(1);
   
   // Normalize rewards so we have exactly the count of totalLevels
@@ -615,7 +615,7 @@ function SeasonRewardsEditor({ rewards, onChange, totalLevels }: { rewards: any[
     };
   });
 
-  const updateReward = (key: 'freeReward' | 'premiumReward', field: string, val: any) => {
+  const updateReward = (key: 'freeReward' | 'premiumReward', field: string, val: unknown) => {
     const nextRewards = normalizedRewards.map((r, idx) => {
       if (idx === selectedLevel - 1) {
         const rewardObj = { ...asRecord(r[key]), [field]: val };
@@ -685,8 +685,8 @@ function SeasonRewardsEditor({ rewards, onChange, totalLevels }: { rewards: any[
   );
 }
 
-function SeasonMissionsEditor({ missions, onChange }: { missions: any[]; onChange: (next: any[]) => void }) {
-  const updateMission = (index: number, key: string, val: any) => {
+function SeasonMissionsEditor({ missions, onChange }: { missions: Record<string, unknown>[]; onChange: (next: Record<string, unknown>[]) => void }) {
+  const updateMission = (index: number, key: string, val: unknown) => {
     onChange(missions.map((m, i) => i === index ? { ...m, [key]: val } : m));
   };
   const addMission = () => {
@@ -790,7 +790,9 @@ function SeasonEditor({ seasons, selectedSeason, setSelectedSeason, setSeasons, 
       if (!Number.isNaN(d.getTime())) {
         return d.toISOString().split('T')[0];
       }
-    } catch (_) {}
+    } catch {
+      // ignore
+    }
     return String(val);
   };
 

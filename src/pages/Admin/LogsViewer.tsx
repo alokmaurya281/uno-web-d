@@ -269,7 +269,8 @@ const LogsViewer: React.FC = () => {
         >
           {processedLines.map((line, idx) => {
             if (line.isJson && line.parsed) {
-              const { ts, level, event, pid, ...meta } = line.parsed;
+              const { ts, level, event, pid: _pid, ...meta } = line.parsed;
+              void _pid;
               return (
                 <div key={idx} className={`p-1.5 rounded border ${getLevelColor(level || 'info')} flex flex-col md:flex-row md:items-start gap-2`}>
                   {/* Timestamp */}
