@@ -34,7 +34,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   const navItems = [
     { label: 'Store', icon: <ShoppingBag size={15} className="text-uno-yellow" />, action: onOpenStore },
-    { label: 'UNO Pass', icon: <Layers size={15} className="text-uno-red" />, action: onOpenPass },
+    { label: 'Tanox Pass', icon: <Layers size={15} className="text-uno-red" />, action: onOpenPass },
     { label: 'Spinner', icon: <Gift size={15} className="text-uno-green" />, action: onOpenSpinner },
     { label: 'Rankings', icon: <Trophy size={15} className="text-amber-400" />, action: onOpenLeaderboard },
   ];
@@ -68,12 +68,12 @@ export const Navbar: React.FC<NavbarProps> = ({
           className="flex items-center gap-2 group cursor-pointer"
         >
           <div className="relative flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-tr from-uno-red via-uno-yellow to-uno-blue p-0.5 group-hover:scale-105 transition-transform duration-300 shadow-[0_0_15px_rgba(255,59,59,0.5)]">
-            <div className="w-full h-full bg-uno-dark rounded-[10px] flex items-center justify-center font-black italic text-base sm:text-lg tracking-tighter text-white">
-              UNO
+            <div className="w-full h-full bg-uno-dark rounded-[10px] flex items-center justify-center font-black italic text-xs sm:text-sm tracking-tighter text-white">
+              TANOX
             </div>
           </div>
           <span className="font-black italic text-lg sm:text-xl tracking-tight text-white hidden xs:inline">
-            UNO<span className="text-uno-red">.</span>WEB
+            TANOX<span className="text-uno-red">.</span>CARDS
           </span>
         </Link>
 

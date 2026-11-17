@@ -12,14 +12,14 @@ export const Footer: React.FC = () => {
           <div className="space-y-3">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-lg bg-uno-red flex items-center justify-center font-black italic text-white text-base">
-                U
+                T
               </div>
               <h4 className="text-white font-black italic text-xl tracking-tighter">
-                UNO<span className="text-uno-red">.</span>MOBILE
+                TANOX<span className="text-uno-red">.</span>CARDS
               </h4>
             </div>
             <p className="text-gray-400 text-xs leading-relaxed max-w-sm">
-              Real-time competitive multiplayer UNO card game for Android. Custom house rules, 7-0 swaps, stacking chains, and permanent pass rewards.
+              Real-time competitive multiplayer Tanox Cards game for Android. Custom house rules, 7-0 swaps, stacking chains, and permanent pass rewards.
             </p>
             <div className="flex items-center gap-2 text-[11px] font-mono text-uno-green">
               <span className="w-2 h-2 rounded-full bg-uno-green animate-pulse" />
@@ -33,7 +33,7 @@ export const Footer: React.FC = () => {
             <ul className="space-y-2 text-xs text-gray-400 font-medium">
               <li><a href="#customizations" onClick={() => sfx.playCardClick()} className="hover:text-white transition-colors">Customization Studio</a></li>
               <li><a href="#modes" onClick={() => sfx.playCardClick()} className="hover:text-white transition-colors">7-0 & House Rules</a></li>
-              <li><a href="#pass" onClick={() => sfx.playCardClick()} className="hover:text-white transition-colors">UNO Pass Seasons</a></li>
+              <li><a href="#pass" onClick={() => sfx.playCardClick()} className="hover:text-white transition-colors">Tanox Pass Seasons</a></li>
               <li><a href="#spinner" onClick={() => sfx.playCardClick()} className="hover:text-white transition-colors">Daily Lucky Spinner</a></li>
               <li><a href="#leaderboard" onClick={() => sfx.playCardClick()} className="hover:text-white transition-colors">Global Leaderboard</a></li>
             </ul>
@@ -52,7 +52,7 @@ export const Footer: React.FC = () => {
         </div>
 
         <div className="pt-8 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-gray-500 font-medium">
-          <p>© {new Date().getFullYear()} UNO Mobile Platform. Developed by Alok Maurya. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} Tanox Cards Platform. Developed by Alok Maurya. All rights reserved.</p>
           <div className="flex items-center gap-4">
             <span className="flex items-center gap-1 text-gray-400">
               Made with <Heart size={14} className="text-uno-red fill-uno-red" /> for card lovers worldwide
