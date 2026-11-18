@@ -15,6 +15,7 @@ import { createAccountDeletionRequest } from '../services/adminApi';
 import { auth } from '../firebase/config';
 
 const AccountDeletion: React.FC = () => {
+  const [appEntity, setAppEntity] = useState('com.tanoxcards.offline');
   const [email, setEmail] = useState('');
   const [uid, setUid] = useState('');
   const [reason, setReason] = useState('');
@@ -117,7 +118,7 @@ const AccountDeletion: React.FC = () => {
       await createAccountDeletionRequest({
         email: email.trim(),
         uid: uid.trim() || undefined,
-        reason: reason.trim() || undefined,
+        reason: `[Entity: ${appEntity}] ${reason.trim()}`.trim(),
       });
       setEmail('');
       setUid('');
@@ -149,13 +150,42 @@ const AccountDeletion: React.FC = () => {
           <Trash2 size={32} />
         </div>
 
-        <h1 className="text-3xl font-black text-center text-gray-900 mb-4 tracking-tight">
-          Account Deletion Request
+        <h1 className="text-3xl font-black text-center text-gray-900 mb-2 tracking-tight">
+          Account & Data Deletion
         </h1>
 
-        <p className="text-gray-500 text-center mb-10 leading-relaxed font-medium">
-          If you want to delete your account and all associated data from our app, please submit the request below. We will process your request within 7 days.
+        <div className="text-center mb-6">
+          <span className="inline-block bg-amber-50 border border-amber-200 text-amber-800 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">
+            Developer: Alok Maurya
+          </span>
+        </div>
+
+        <p className="text-gray-500 text-center mb-6 leading-relaxed font-medium text-sm">
+          In accordance with Google Play User Data policies, submit the form below to permanently delete your account, game statistics, and associated personal data from any Tanox Cards application.
         </p>
+
+        {/* Covered Apps Box */}
+        <div className="mb-6 rounded-2xl border border-gray-200 bg-gray-50/80 p-4 text-xs">
+          <p className="font-bold text-gray-800 uppercase tracking-wider mb-2">Covered Apps & Packages:</p>
+          <ul className="space-y-1 text-gray-600 font-medium">
+            <li className="flex justify-between items-center py-1 border-b border-gray-100">
+              <span className="font-semibold text-gray-900">Tanox: Offline Card Game</span>
+              <span className="font-mono bg-white px-2 py-0.5 rounded border border-gray-200">com.tanoxcards.offline</span>
+            </li>
+            <li className="flex justify-between items-center py-1 border-b border-gray-100">
+              <span className="font-semibold text-gray-900">Tanox 7-0 Cards: Hand Swap</span>
+              <span className="font-mono bg-white px-2 py-0.5 rounded border border-gray-200">com.tanoxcards.sevenzero</span>
+            </li>
+            <li className="flex justify-between items-center py-1 border-b border-gray-100">
+              <span className="font-semibold text-gray-900">Tanox Stacking Cards</span>
+              <span className="font-mono bg-white px-2 py-0.5 rounded border border-gray-200">com.tanoxcards.stacking</span>
+            </li>
+            <li className="flex justify-between items-center py-1">
+              <span className="font-semibold text-gray-900">Tanox Cards: Multiplayer</span>
+              <span className="font-mono bg-white px-2 py-0.5 rounded border border-gray-200">com.unogame.uno_flutter</span>
+            </li>
+          </ul>
+        </div>
 
         <div className="mb-6 rounded-2xl border border-gray-100 bg-gray-50 p-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -197,6 +227,25 @@ const AccountDeletion: React.FC = () => {
         </div>
 
         <form onSubmit={(event) => void submitRequest(event)} className="space-y-6">
+          <div>
+            <label className="block text-sm font-bold text-gray-700 mb-2 px-1">
+              Select App / Game (Entity) <span className="text-uno-red">*</span>
+            </label>
+            <select
+              name="appEntity"
+              value={appEntity}
+              onChange={(event) => setAppEntity(event.target.value)}
+              required
+              className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 outline-none focus:border-uno-red/50 focus:ring-4 focus:ring-uno-red/5 transition-all text-sm font-medium text-gray-900"
+            >
+              <option value="com.tanoxcards.offline">Tanox: Offline Card Game (com.tanoxcards.offline)</option>
+              <option value="com.tanoxcards.sevenzero">Tanox 7-0 Cards: Hand Swap (com.tanoxcards.sevenzero)</option>
+              <option value="com.tanoxcards.stacking">Tanox Stacking Cards (com.tanoxcards.stacking)</option>
+              <option value="com.unogame.uno_flutter">Tanox Cards: Multiplayer (com.unogame.uno_flutter)</option>
+              <option value="all_apps">All Tanox Games / Universal Account (All Apps)</option>
+            </select>
+          </div>
+
           <div>
             <label className="block text-sm font-bold text-gray-700 mb-2 px-1">Your Email</label>
             <input 

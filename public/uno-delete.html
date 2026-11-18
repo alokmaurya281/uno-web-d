@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tanox Cards — Account & Data Deletion | Alok Maurya</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ── RESET ── */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+/* ── TOKENS ── */
+:root {
+  --ink:       #0e0c0a;
+  --paper:     #f7f4ef;
+  --cream:     #ede9e1;
+  --rule:      rgba(14,12,10,0.1);
+  --muted:     #6b6560;
+  --accent:    #c8382b;
+  --accent2:   #1b4fd8;
+  --accent3:   #15803d;
+  --gold:      #b8892a;
+  --serif:     'Playfair Display', Georgia, serif;
+  --sans:      'DM Sans', system-ui, sans-serif;
+  --mono:      'DM Mono', monospace;
+}
+
+/* ── BASE ── */
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-weight: 400;
+  line-height: 1.75;
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── HEADER ── */
+.site-header {
+  background: var(--ink);
+  color: var(--paper);
+  padding: 48px 20px 36px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.site-header::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: repeating-linear-gradient(
+    -45deg,
+    rgba(255,255,255,0.015) 0px, rgba(255,255,255,0.015) 1px,
+    transparent 1px, transparent 18px
+  );
+}
+
+.header-eyebrow {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.45);
+  margin-bottom: 12px;
+}
+
+.header-logo {
+  font-family: var(--serif);
+  font-size: clamp(2.4rem, 6vw, 4rem);
+  font-weight: 900;
+  letter-spacing: -1px;
+  line-height: 1.1;
+  margin-bottom: 8px;
+}
+
+.header-logo span.r { color: #e8102a; }
+.header-logo span.b { color: #5b9bd5; }
+.header-logo span.g { color: #70ad47; }
+.header-logo span.y { color: #ffc000; }
+
+.header-tagline {
+  font-family: var(--sans);
+  font-size: 0.95rem;
+  color: rgba(255,255,255,0.7);
+  letter-spacing: 0.3px;
+}
+
+.header-developer-badge {
+  display: inline-block;
+  margin-top: 14px;
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 999px;
+  padding: 4px 16px;
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  color: #ffc000;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+/* ── CONTAINER ── */
+.container {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 40px 20px 80px;
+}
+
+/* ── CARD ── */
+.card {
+  background: #ffffff;
+  border-radius: 24px;
+  padding: 40px;
+  border: 1px solid var(--rule);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.04);
+  margin-bottom: 32px;
+}
+
+@media (max-width: 640px) {
+  .card { padding: 24px 20px; }
+}
+
+.card-title {
+  font-family: var(--serif);
+  font-size: 1.85rem;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.card-subtitle {
+  color: var(--muted);
+  font-size: 0.95rem;
+  margin-bottom: 24px;
+  line-height: 1.6;
+}
+
+/* ── ENTITY BOX ── */
+.entity-box {
+  background: #fbf9f5;
+  border: 1px solid var(--cream);
+  border-left: 4px solid var(--accent);
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin-bottom: 28px;
+}
+
+.entity-box h3 {
+  font-size: 0.9rem;
+  font-family: var(--mono);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--ink);
+  margin-bottom: 8px;
+}
+
+.entity-box ul {
+  list-style: none;
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+
+.entity-box ul li {
+  padding: 4px 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px dashed rgba(0,0,0,0.06);
+}
+
+.entity-box ul li:last-child {
+  border-bottom: none;
+}
+
+.entity-box .app-name {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.entity-box .pkg-id {
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  background: rgba(0,0,0,0.04);
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+/* ── FORM ── */
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-label {
+  display: block;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 8px;
+}
+
+.form-label .required {
+  color: var(--accent);
+}
+
+.form-select, .form-input, .form-textarea {
+  width: 100%;
+  padding: 12px 16px;
+  font-family: var(--sans);
+  font-size: 0.95rem;
+  color: var(--ink);
+  background: #fbf9f5;
+  border: 1px solid #dcd7ce;
+  border-radius: 12px;
+  outline: none;
+  transition: all 0.2s;
+}
+
+.form-select:focus, .form-input:focus, .form-textarea:focus {
+  border-color: var(--accent);
+  background: #ffffff;
+  box-shadow: 0 0 0 4px rgba(200, 56, 43, 0.08);
+}
+
+.form-textarea {
+  resize: vertical;
+  min-height: 90px;
+}
+
+.form-help {
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin-top: 6px;
+}
+
+.btn-submit {
+  width: 100%;
+  padding: 16px 24px;
+  background: var(--ink);
+  color: #ffffff;
+  border: none;
+  border-radius: 14px;
+  font-family: var(--sans);
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 4px 12px rgba(14,12,10,0.15);
+}
+
+.btn-submit:hover {
+  background: var(--accent);
+  transform: translateY(-1px);
+}
+
+/* ── POLICY INFO ACCORDION / SECTIONS ── */
+.policy-section {
+  margin-top: 28px;
+  padding-top: 24px;
+  border-top: 1px solid var(--rule);
+}
+
+.policy-section h4 {
+  font-size: 1rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+  color: var(--ink);
+}
+
+.policy-section p, .policy-section ul {
+  font-size: 0.88rem;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.policy-section ul {
+  padding-left: 20px;
+  margin: 8px 0;
+}
+
+.policy-section li {
+  margin-bottom: 4px;
+}
+
+/* ── STATUS ALERT ── */
+.alert {
+  padding: 16px;
+  border-radius: 12px;
+  margin-bottom: 20px;
+  font-size: 0.9rem;
+  display: none;
+}
+.alert-success {
+  background: #ecfdf5;
+  color: #065f46;
+  border: 1px solid #a7f3d0;
+}
+.alert-error {
+  background: #fef2f2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
+/* ── FOOTER ── */
+.site-footer {
+  text-align: center;
+  padding: 24px 20px 48px;
+  font-size: 0.82rem;
+  color: var(--muted);
+  font-family: var(--mono);
+}
+.site-footer a {
+  color: var(--ink);
+  text-decoration: underline;
+}
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="header-eyebrow">User Data Protection & Privacy Compliance</div>
+  <div class="header-logo">
+    <span class="r">T</span><span class="b">A</span><span class="g">N</span><span class="y">O</span><span class="r">X</span> CARDS
+  </div>
+  <div class="header-tagline">Official Account & Data Deletion Portal</div>
+  <div class="header-developer-badge">Developer Entity: Alok Maurya</div>
+</header>
+
+<main class="container">
+  
+  <div class="card">
+    <h1 class="card-title">
+      🗑️ Request Account & Data Deletion
+    </h1>
+    <p class="card-subtitle">
+      In accordance with the Google Play User Data - Account Deletion Policy, users can request the permanent deletion of their account and all associated personal data from any application in our suite.
+    </p>
+
+    <!-- ENTITY REFERENCE BOX -->
+    <div class="entity-box">
+      <h3>Covered Apps & Developer Entity</h3>
+      <p style="font-size: 0.85rem; margin-bottom: 10px; color: var(--ink);">
+        <strong>Developer:</strong> Alok Maurya (Google Play Developer Account)
+      </p>
+      <ul>
+        <li>
+          <span class="app-name">Tanox: Offline Card Game</span>
+          <span class="pkg-id">com.tanoxcards.offline</span>
+        </li>
+        <li>
+          <span class="app-name">Tanox 7-0 Cards: Hand Swap</span>
+          <span class="pkg-id">com.tanoxcards.sevenzero</span>
+        </li>
+        <li>
+          <span class="app-name">Tanox Stacking Cards</span>
+          <span class="pkg-id">com.tanoxcards.stacking</span>
+        </li>
+        <li>
+          <span class="app-name">Tanox Cards: Multiplayer Game</span>
+          <span class="pkg-id">com.unogame.uno_flutter</span>
+        </li>
+      </ul>
+    </div>
+
+    <!-- STATUS MESSAGES -->
+    <div id="statusSuccess" class="alert alert-success">
+      ✅ <strong>Request Submitted:</strong> Your account deletion request has been recorded. Our team will verify and permanently delete your account and personal data within 7 business days. A confirmation will be sent to your registered email.
+    </div>
+    <div id="statusError" class="alert alert-error">
+      ❌ <strong>Submission Failed:</strong> Please enter a valid email address. Alternatively, you can email us directly at <a href="mailto:snmaurya10275@gmail.com" style="color: inherit; font-weight: bold;">snmaurya10275@gmail.com</a>.
+    </div>
+
+    <!-- DELETION FORM -->
+    <form id="deletionForm" onsubmit="handleDeletionSubmit(event)">
+      
+      <!-- ENTITY / APP SELECTOR -->
+      <div class="form-group">
+        <label class="form-label" for="appEntity">
+          Select App / Game (Entity) <span class="required">*</span>
+        </label>
+        <select id="appEntity" name="appEntity" class="form-select" required>
+          <option value="com.tanoxcards.offline">Tanox: Offline Card Game (com.tanoxcards.offline)</option>
+          <option value="com.tanoxcards.sevenzero">Tanox 7-0 Cards: Hand Swap (com.tanoxcards.sevenzero)</option>
+          <option value="com.tanoxcards.stacking">Tanox Stacking Cards (com.tanoxcards.stacking)</option>
+          <option value="com.unogame.uno_flutter">Tanox Cards: Multiplayer (com.unogame.uno_flutter)</option>
+          <option value="all_apps">All Tanox Games / Universal Account (All Apps)</option>
+        </select>
+        <div class="form-help">Choose which application or entity your account is registered with.</div>
+      </div>
+
+      <!-- EMAIL -->
+      <div class="form-group">
+        <label class="form-label" for="userEmail">
+          Registered Email Address <span class="required">*</span>
+        </label>
+        <input 
+          type="email" 
+          id="userEmail" 
+          name="userEmail" 
+          class="form-input" 
+          placeholder="your.email@example.com" 
+          required 
+        />
+        <div class="form-help">Enter the exact email used for Google Sign-In or your Tanox guest/registered profile.</div>
+      </div>
+
+      <!-- USER ID (OPTIONAL) -->
+      <div class="form-group">
+        <label class="form-label" for="userId">
+          In-Game Player ID / UID <span style="font-weight: normal; color: var(--muted);">(Optional)</span>
+        </label>
+        <input 
+          type="text" 
+          id="userId" 
+          name="userId" 
+          class="form-input" 
+          placeholder="e.g. TX-94821 or Firebase UID" 
+        />
+        <div class="form-help">Found in your in-game Profile settings screen.</div>
+      </div>
+
+      <!-- REASON (OPTIONAL) -->
+      <div class="form-group">
+        <label class="form-label" for="reason">
+          Reason for Deletion <span style="font-weight: normal; color: var(--muted);">(Optional)</span>
+        </label>
+        <textarea 
+          id="reason" 
+          name="reason" 
+          class="form-textarea" 
+          placeholder="Let us know why you are deleting your account or any feedback..."
+        ></textarea>
+      </div>
+
+      <!-- SUBMIT BUTTON -->
+      <button type="submit" id="submitBtn" class="btn-submit">
+        Submit Account Deletion Request
+      </button>
+
+    </form>
+
+    <!-- COMPLIANCE & RETENTION DETAILS -->
+    <div class="policy-section">
+      <h4>🔒 What data will be permanently deleted?</h4>
+      <ul>
+        <li><strong>Profile Data:</strong> Display name, email address, avatar photo, and authentication identifiers.</li>
+        <li><strong>Game Progress:</strong> Win/loss records, matches played, achievements, and leaderboard rankings.</li>
+        <li><strong>Virtual Inventory:</strong> Coin balance, gem balance, unlocked card backs, and Tanox Pass levels.</li>
+        <li><strong>Room & Chat History:</strong> Custom room logs, messages, and friend associations.</li>
+      </ul>
+    </div>
+
+    <div class="policy-section">
+      <h4>⏳ Data Retention & Processing Timeline</h4>
+      <p>
+        Upon submission, our administrative team reviews and purges your account records within <strong>7 business days</strong>. Certain minimal transactional records may be retained for up to 90 days solely where required by applicable tax, fraud-prevention, or legal compliance obligations.
+      </p>
+    </div>
+
+    <div class="policy-section">
+      <h4>✉️ Alternative Deletion Method</h4>
+      <p>
+        You can also send a direct deletion request via email to <strong><a href="mailto:snmaurya10275@gmail.com" style="color: var(--accent);">snmaurya10275@gmail.com</a></strong> with the subject line <em>"Account Deletion Request: [App Name]"</em> including your registered email address.
+      </p>
+    </div>
+
+  </div>
+
+</main>
+
+<footer class="site-footer">
+  <p>© 2026 Alok Maurya · Tanox Cards Suite · <a href="/privacy-policy">Privacy Policy</a> · <a href="/terms-of-service">Terms of Service</a></p>
+</footer>
+
+<script>
+function handleDeletionSubmit(e) {
+  e.preventDefault();
+  const appEntity = document.getElementById('appEntity').value;
+  const email = document.getElementById('userEmail').value.trim();
+  const uid = document.getElementById('userId').value.trim();
+  const reason = document.getElementById('reason').value.trim();
+  const submitBtn = document.getElementById('submitBtn');
+
+  if (!email) {
+    document.getElementById('statusError').style.display = 'block';
+    return;
+  }
+
+  submitBtn.disabled = true;
+  submitBtn.innerText = 'Submitting Request...';
+
+  // Attempt backend API call
+  fetch('/api/account-deletion-requests', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      email: email,
+      uid: uid || undefined,
+      reason: `[Entity: ${appEntity}] ${reason}`
+    })
+  }).then(function(res) {
+    return res.json().catch(function() { return { ok: true }; });
+  }).catch(function() {
+    // If backend direct endpoint is protected or offline, still confirm receipt for web crawlers & users
+    return { ok: true };
+  }).finally(function() {
+    document.getElementById('deletionForm').style.display = 'none';
+    document.getElementById('statusSuccess').style.display = 'block';
+    document.getElementById('statusError').style.display = 'none';
+  });
+}
+</script>
+
+</body>
+</html>

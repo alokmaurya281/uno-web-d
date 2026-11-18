@@ -19,6 +19,18 @@
       "destination": "http://3.7.124.150/api/:path*"
     },
     {
+      "source": "/privacy-policy",
+      "destination": "/privacy-policy.html"
+    },
+    {
+      "source": "/terms-of-service",
+      "destination": "/privacy-policy.html"
+    },
+    {
+      "source": "/uno-delete",
+      "destination": "/uno-delete.html"
+    },
+    {
       "source": "/:path*",
       "destination": "/index.html"
     }
