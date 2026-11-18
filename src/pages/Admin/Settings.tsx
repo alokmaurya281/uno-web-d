@@ -29,6 +29,7 @@ const readBool = (value: unknown, fallback = false) => (typeof value === 'boolea
 
 const sectionTitle = (id: string) => ({
   app_settings: 'App, Friends & Gifts',
+  game_settings: 'Gameplay & Rules',
   ad_settings: 'Ad Settings',
   coin_rewards_config: 'Coins, Missions & Streaks',
   spinner_config: 'Daily Spinner',
@@ -312,11 +313,46 @@ const Settings: React.FC = () => {
 
 function StructuredConfigEditor({ id, value, onChange }: { id: string; value: ConfigMap; onChange: (next: ConfigMap) => void }) {
   if (id === 'app_settings') return <AppSettingsEditor value={value} onChange={onChange} />;
+  if (id === 'game_settings') return <GameSettingsEditor value={value} onChange={onChange} />;
   if (id === 'ad_settings') return <AdSettingsEditor value={value} onChange={onChange} />;
   if (id === 'coin_rewards_config') return <CoinRewardsEditor value={value} onChange={onChange} />;
   if (id === 'spinner_config') return <SpinnerEditor value={value} onChange={onChange} />;
   if (['store_config', 'collection_config', 'achievements_config'].includes(id)) return <CatalogEditor value={value} onChange={onChange} id={id} />;
   return <KeyValueEditor value={value} onChange={onChange} />;
+}
+
+function GameSettingsEditor({ value, onChange }: EditorProps) {
+  const set = (key: string, next: unknown) => onChange({ ...value, [key]: next });
+
+  return (
+    <div className="space-y-5">
+      <Panel title="Core Match & Rules">
+        <ToggleGrid>
+          <Toggle label="Stack Draw Cards (+2 / +4)" checked={readBool(value.stackDrawCards, true)} onChange={(next) => set('stackDrawCards', next)} />
+          <Toggle label="7-0 Hand Swap Rule" checked={readBool(value.sevenZeroRule, true)} onChange={(next) => set('sevenZeroRule', next)} />
+          <Toggle label="Jump-In Rule" checked={readBool(value.jumpInRule, false)} onChange={(next) => set('jumpInRule', next)} />
+          <Toggle label="Draw to Match (Continuous)" checked={readBool(value.drawToMatch, false)} onChange={(next) => set('drawToMatch', next)} />
+        </ToggleGrid>
+      </Panel>
+
+      <Panel title="Timing & Limits">
+        <FieldGrid>
+          <NumberField label="Turn time limit (seconds)" value={readNumber(value.turnTimeLimitSeconds, 15)} onChange={(next) => set('turnTimeLimitSeconds', next)} />
+          <NumberField label="Starting cards count" value={readNumber(value.startingCardsCount, 7)} onChange={(next) => set('startingCardsCount', next)} />
+          <NumberField label="UNO shout grace period (ms)" value={readNumber(value.unoGracePeriodMs, 2000)} onChange={(next) => set('unoGracePeriodMs', next)} />
+          <SelectField label="Default bot difficulty" value={readString(value.botDifficulty, 'medium')} options={['easy', 'medium', 'hard']} onChange={(next) => set('botDifficulty', next)} />
+        </FieldGrid>
+      </Panel>
+
+      <Panel title="Coin Rewards & Economy">
+        <FieldGrid>
+          <NumberField label="Computer win coins" value={readNumber(value.computerWinCoins, 15)} onChange={(next) => set('computerWinCoins', next)} />
+          <NumberField label="Multiplayer win coins" value={readNumber(value.multiplayerWinCoins, 25)} onChange={(next) => set('multiplayerWinCoins', next)} />
+          <NumberField label="Game completion reward" value={readNumber(value.gameCompleteReward, 10)} onChange={(next) => set('gameCompleteReward', next)} />
+        </FieldGrid>
+      </Panel>
+    </div>
+  );
 }
 
 function AppSettingsEditor({ value, onChange }: EditorProps) {

@@ -20,6 +20,9 @@ import SupportTickets from './pages/Admin/SupportTickets';
 import AccountDeletionRequests from './pages/Admin/AccountDeletionRequests';
 import Transactions from './pages/Admin/Transactions';
 import LogsViewer from './pages/Admin/LogsViewer';
+import PlayGame from './pages/PlayGame';
+import { AuthProvider } from './context/AuthContext';
+import { AuthModal } from './components/Auth/AuthModal';
 
 function App() {
   const dispatch = useDispatch();
@@ -29,7 +32,7 @@ function App() {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         // Skip admin verification on the login page — Login.tsx handles its own flow
-        if (window.location.pathname === '/admin-login') {
+        if (window.location.pathname === '/admin-login' || window.location.pathname === '/admin/login') {
           console.log('[App] Auth state changed on login page — deferring to Login.tsx');
           dispatch(setLoading(false));
           return;
@@ -70,39 +73,44 @@ function App() {
   }, [dispatch]);
 
   return (
-    <Router>
-      <Routes>
-        {/* Main Routes */}
-        <Route path="/" element={<Home />} />
-        <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-        <Route path="/terms-of-service" element={<PrivacyPolicy />} />
-        <Route path="/uno-delete" element={<AccountDeletion />} />
-        <Route path="/admin-login" element={<Login />} />
-        
-        {/* Admin Routes - Protected */}
-        <Route 
-          path="/admin" 
-          element={
-            <ProtectedRoute>
-              <AdminLayout />
-            </ProtectedRoute>
-          }
-        >
-          <Route index element={<Dashboard />} />
-          <Route path="users" element={<UsersManagement />} />
-          <Route path="rooms" element={<RoomsManagement />} />
-          <Route path="analytics" element={<Analytics />} />
-          <Route path="support" element={<SupportTickets />} />
-          <Route path="account-deletion-requests" element={<AccountDeletionRequests />} />
-          <Route path="transactions" element={<Transactions />} />
-          <Route path="logs" element={<LogsViewer />} />
-          <Route path="settings" element={<Settings />} />
-        </Route>
+    <AuthProvider>
+      <Router>
+        <AuthModal />
+        <Routes>
+          {/* Main Routes */}
+          <Route path="/" element={<Home />} />
+          <Route path="/play" element={<PlayGame />} />
+          <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+          <Route path="/terms-of-service" element={<PrivacyPolicy />} />
+          <Route path="/uno-delete" element={<AccountDeletion />} />
+          <Route path="/admin-login" element={<Login />} />
+          <Route path="/admin/login" element={<Login />} />
+          
+          {/* Admin Routes - Protected */}
+          <Route 
+            path="/admin" 
+            element={
+              <ProtectedRoute>
+                <AdminLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<Dashboard />} />
+            <Route path="users" element={<UsersManagement />} />
+            <Route path="rooms" element={<RoomsManagement />} />
+            <Route path="analytics" element={<Analytics />} />
+            <Route path="support" element={<SupportTickets />} />
+            <Route path="account-deletion-requests" element={<AccountDeletionRequests />} />
+            <Route path="transactions" element={<Transactions />} />
+            <Route path="logs" element={<LogsViewer />} />
+            <Route path="settings" element={<Settings />} />
+          </Route>
 
-        {/* Fallback */}
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </Router>
+          {/* Fallback */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Router>
+    </AuthProvider>
   );
 }
 
