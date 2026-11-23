@@ -180,8 +180,12 @@ const AccountDeletion: React.FC = () => {
               <span className="font-semibold text-gray-900">Tanox Stacking Cards</span>
               <span className="font-mono bg-white px-2 py-0.5 rounded border border-gray-200">com.tanoxcards.stacking</span>
             </li>
-            <li className="flex justify-between items-center py-1">
+            <li className="flex justify-between items-center py-1 border-b border-gray-100">
               <span className="font-semibold text-gray-900">Tanox Cards: Multiplayer</span>
+              <span className="font-mono bg-white px-2 py-0.5 rounded border border-gray-200">com.tanoxcards.game</span>
+            </li>
+            <li className="flex justify-between items-center py-1">
+              <span className="font-semibold text-gray-900">Tanox Cards (Classic)</span>
               <span className="font-mono bg-white px-2 py-0.5 rounded border border-gray-200">com.unogame.uno_flutter</span>
             </li>
           </ul>
@@ -241,7 +245,8 @@ const AccountDeletion: React.FC = () => {
               <option value="com.tanoxcards.offline">Tanox: Offline Card Game (com.tanoxcards.offline)</option>
               <option value="com.tanoxcards.sevenzero">Tanox 7-0 Cards: Hand Swap (com.tanoxcards.sevenzero)</option>
               <option value="com.tanoxcards.stacking">Tanox Stacking Cards (com.tanoxcards.stacking)</option>
-              <option value="com.unogame.uno_flutter">Tanox Cards: Multiplayer (com.unogame.uno_flutter)</option>
+              <option value="com.tanoxcards.game">Tanox Cards: Multiplayer (com.tanoxcards.game)</option>
+              <option value="com.unogame.uno_flutter">Tanox Cards (Classic) (com.unogame.uno_flutter)</option>
               <option value="all_apps">All Tanox Games / Universal Account (All Apps)</option>
             </select>
           </div>
