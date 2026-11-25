@@ -355,25 +355,112 @@ function GameSettingsEditor({ value, onChange }: EditorProps) {
   );
 }
 
+const APP_FLAVORS = ['standard', 'offline', 'sevenzero', 'stacking'] as const;
+
+const AD_UNIT_FIELDS: ReadonlyArray<{ key: string; label: string }> = [
+  { key: 'homeBannerAdUnitId', label: 'Home Banner Ad Unit ID' },
+  { key: 'nativeAdUnitId', label: 'Native Ad Unit ID' },
+  { key: 'createLobbyBannerAdUnitId', label: 'Create Lobby Banner Ad Unit ID' },
+  { key: 'joinLobbyBannerAdUnitId', label: 'Join Lobby Banner Ad Unit ID' },
+  { key: 'socketLobbyWaitingBannerAdUnitId', label: 'Lobby Waiting Banner Ad Unit ID' },
+  { key: 'leaderboardBannerAdUnitId', label: 'Leaderboard Banner Ad Unit ID' },
+  { key: 'quickMatchGameplayInterstitialAdUnitId', label: 'Quick Match Interstitial Ad Unit ID' },
+  { key: 'computerGameInterstitialAdUnitId', label: 'Computer Game Interstitial Ad Unit ID' },
+  { key: 'botRewardedAdUnitId', label: 'Bot Match Rewarded Ad Unit ID' },
+  { key: 'quickMatchRewardedAdUnitId', label: 'Quick Match Rewarded Ad Unit ID' },
+  { key: 'coinTopUpRewardedAdUnitId', label: 'Coin Top-Up Rewarded Ad Unit ID' },
+  { key: 'luckySpinRewardedAdUnitId', label: 'Lucky Spin Rewarded Ad Unit ID' },
+  { key: 'appOpenAdUnitId', label: 'App Open Ad Unit ID (Optional)' },
+];
+
 function AppSettingsEditor({ value, onChange }: EditorProps) {
+  const [selectedUpdateFlavor, setSelectedUpdateFlavor] = useState<(typeof APP_FLAVORS)[number]>('standard');
   const featureFlags = asRecord(value.featureFlags);
   const supportLinks = asRecord(value.supportLinks);
   const supportSettings = asRecord(value.supportSettings);
   const achievementSettings = asRecord(value.achievementSettings);
   const friendSettings = asRecord(value.friendSettings);
   const giftSettings = asRecord(value.giftSettings);
+  const updateFlavors = asRecord(value.updateFlavors);
+  const activeFlavorUpdate = asRecord(updateFlavors[selectedUpdateFlavor]);
+
   const set = (key: string, next: unknown) => onChange({ ...value, [key]: next });
   const setNested = (group: string, key: string, next: unknown) => onChange({ ...value, [group]: { ...asRecord(value[group]), [key]: next } });
+  const setFlavorUpdateField = (key: string, next: unknown) => {
+    const nextFlavor = { ...activeFlavorUpdate };
+    if (next === '' || next === undefined) {
+      delete nextFlavor[key];
+    } else {
+      nextFlavor[key] = next;
+    }
+    onChange({
+      ...value,
+      updateFlavors: {
+        ...updateFlavors,
+        [selectedUpdateFlavor]: nextFlavor,
+      },
+    });
+  };
 
   return (
     <div className="space-y-5">
       <Panel title="App switches">
         <ToggleGrid>
-          {['maintenanceMode', 'guestLogin', 'playGamesSignIn', 'newRegistration', 'forceUpdate', 'useSocket'].map((key) => (
+          {['maintenanceMode', 'guestLogin', 'playGamesSignIn', 'newRegistration', 'useSocket'].map((key) => (
             <Toggle key={key} label={key} checked={readBool(value[key])} onChange={(next) => set(key, next)} />
           ))}
         </ToggleGrid>
-        <TextField label="Force update version" value={readString(value.forceUpdateVersion)} onChange={(next) => set('forceUpdateVersion', next)} />
+      </Panel>
+
+      <Panel title="In-Air Updates (Backend OTA — Works Without Play Store)">
+        <ToggleGrid>
+          <Toggle label="forceUpdate (block older versions)" checked={readBool(value.forceUpdate)} onChange={(next) => set('forceUpdate', next)} />
+          <Toggle label="usePlayStoreInAppUpdate" checked={readBool(value.usePlayStoreInAppUpdate, false)} onChange={(next) => set('usePlayStoreInAppUpdate', next)} />
+        </ToggleGrid>
+        <div className="mt-3">
+          <FieldGrid>
+            <TextField label="Min required version (forceUpdateVersion)" value={readString(value.forceUpdateVersion)} onChange={(next) => set('forceUpdateVersion', next)} />
+            <TextField label="Latest optional version (latestVersion)" value={readString(value.latestVersion)} onChange={(next) => set('latestVersion', next)} />
+            <TextField label="Android update URL (APK / Web / Play Store)" value={readString(value.updateUrl)} onChange={(next) => set('updateUrl', next)} />
+            <TextField label="iOS update URL (iosUpdateUrl)" value={readString(value.iosUpdateUrl)} onChange={(next) => set('iosUpdateUrl', next)} />
+            <TextField label="Update dialog title" value={readString(value.updateTitle, 'Update Available')} onChange={(next) => set('updateTitle', next)} />
+            <TextField label="Update dialog message" value={readString(value.updateMessage)} onChange={(next) => set('updateMessage', next)} />
+          </FieldGrid>
+        </div>
+        <div className="mt-4 rounded-lg border border-white/10 bg-black/25 p-3">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <span className="text-xs font-black uppercase tracking-widest text-uno-yellow">Per-Flavor Update Override (Leave blank to inherit global)</span>
+            <div className="flex flex-wrap gap-1.5">
+              {APP_FLAVORS.map((flavor) => (
+                <button
+                  key={flavor}
+                  type="button"
+                  onClick={() => setSelectedUpdateFlavor(flavor)}
+                  className={`rounded px-2.5 py-1 text-xs font-black uppercase ${selectedUpdateFlavor === flavor ? 'bg-uno-red text-white' : 'bg-white/5 text-gray-300 hover:bg-white/10'}`}
+                >
+                  {flavor}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="mb-3">
+            <SelectField
+              label={`${selectedUpdateFlavor} forceUpdate override`}
+              value={activeFlavorUpdate.forceUpdate === undefined ? 'inherit' : String(readBool(activeFlavorUpdate.forceUpdate))}
+              options={['inherit', 'true', 'false']}
+              onChange={(next) => setFlavorUpdateField('forceUpdate', next === 'inherit' ? undefined : next === 'true')}
+            />
+          </div>
+          <FieldGrid>
+            <TextField label={`${selectedUpdateFlavor} forceUpdateVersion`} value={readString(activeFlavorUpdate.forceUpdateVersion)} onChange={(next) => setFlavorUpdateField('forceUpdateVersion', next.trim())} />
+            <TextField label={`${selectedUpdateFlavor} latestVersion`} value={readString(activeFlavorUpdate.latestVersion)} onChange={(next) => setFlavorUpdateField('latestVersion', next.trim())} />
+            <TextField label={`${selectedUpdateFlavor} updateUrl`} value={readString(activeFlavorUpdate.updateUrl)} onChange={(next) => setFlavorUpdateField('updateUrl', next.trim())} />
+            <TextField label={`${selectedUpdateFlavor} updateTitle`} value={readString(activeFlavorUpdate.updateTitle)} onChange={(next) => setFlavorUpdateField('updateTitle', next)} />
+          </FieldGrid>
+          <div className="mt-3">
+            <TextField label={`${selectedUpdateFlavor} updateMessage`} value={readString(activeFlavorUpdate.updateMessage)} onChange={(next) => setFlavorUpdateField('updateMessage', next)} />
+          </div>
+        </div>
       </Panel>
 
       <Panel title="Feature flags">
@@ -431,12 +518,44 @@ function AppSettingsEditor({ value, onChange }: EditorProps) {
 }
 
 function AdSettingsEditor({ value, onChange }: EditorProps) {
+  const [selectedFlavor, setSelectedFlavor] = useState<(typeof APP_FLAVORS)[number]>('standard');
+  const adUnitIds = asRecord(value.adUnitIds);
+  const flavors = asRecord(value.flavors);
+  const activeFlavorUnits = asRecord(flavors[selectedFlavor]);
+
   const set = (key: string, next: unknown) => onChange({ ...value, [key]: next });
+  const setAdUnit = (key: string, next: string) => {
+    const trimmed = next.trim();
+    const nextUnits = { ...adUnitIds };
+    if (trimmed === '') {
+      delete nextUnits[key];
+    } else {
+      nextUnits[key] = trimmed;
+    }
+    onChange({ ...value, adUnitIds: nextUnits });
+  };
+  const setFlavorAdUnit = (key: string, next: string) => {
+    const trimmed = next.trim();
+    const nextFlavorUnits = { ...activeFlavorUnits };
+    if (trimmed === '') {
+      delete nextFlavorUnits[key];
+    } else {
+      nextFlavorUnits[key] = trimmed;
+    }
+    onChange({
+      ...value,
+      flavors: {
+        ...flavors,
+        [selectedFlavor]: nextFlavorUnits,
+      },
+    });
+  };
+
   return (
     <div className="space-y-5">
       <Panel title="Ad switches">
         <ToggleGrid>
-          {['adsEnabled', 'bannerEnabled', 'interstitialEnabled', 'rewardedEnabled', 'testMode', 'unityGdprConsent', 'unityCcpaConsent'].map((key) => (
+          {['adsEnabled', 'bannerEnabled', 'nativeEnabled', 'interstitialEnabled', 'rewardedEnabled', 'appOpenEnabled', 'testMode', 'unityGdprConsent', 'unityCcpaConsent'].map((key) => (
             <Toggle key={key} label={key} checked={readBool(value[key], key !== 'testMode')} onChange={(next) => set(key, next)} />
           ))}
         </ToggleGrid>
@@ -445,6 +564,48 @@ function AdSettingsEditor({ value, onChange }: EditorProps) {
         <FieldGrid>
           <NumberField label="Interstitial frequency" value={readNumber(value.interstitialFrequency, 3)} onChange={(next) => set('interstitialFrequency', next)} />
           <NumberField label="Guest frequency override" value={readNumber(value.guestFrequencyOverride, 2)} onChange={(next) => set('guestFrequencyOverride', next)} />
+        </FieldGrid>
+      </Panel>
+      <Panel title="AdMob Ad Unit IDs (Default / All Flavors)">
+        <p className="mb-3 text-xs text-gray-400">
+          Ad Unit IDs update live without a Play Store release. Unit IDs must belong to the AdMob App ID configured in each flavor&apos;s AndroidManifest/build.gradle.kts.
+        </p>
+        <FieldGrid>
+          {AD_UNIT_FIELDS.map((field) => (
+            <TextField
+              key={field.key}
+              label={field.label}
+              value={readString(adUnitIds[field.key])}
+              onChange={(next) => setAdUnit(field.key, next)}
+            />
+          ))}
+        </FieldGrid>
+      </Panel>
+      <Panel title="Per-Flavor Ad Unit Overrides">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <span className="text-xs text-gray-400">Override specific Ad Unit IDs for one flavor (leave blank to inherit Default above).</span>
+          <div className="flex flex-wrap gap-1.5">
+            {APP_FLAVORS.map((flavor) => (
+              <button
+                key={flavor}
+                type="button"
+                onClick={() => setSelectedFlavor(flavor)}
+                className={`rounded px-2.5 py-1 text-xs font-black uppercase ${selectedFlavor === flavor ? 'bg-uno-red text-white' : 'bg-white/5 text-gray-300 hover:bg-white/10'}`}
+              >
+                {flavor}
+              </button>
+            ))}
+          </div>
+        </div>
+        <FieldGrid>
+          {AD_UNIT_FIELDS.map((field) => (
+            <TextField
+              key={`${selectedFlavor}_${field.key}`}
+              label={`${selectedFlavor}: ${field.label}`}
+              value={readString(activeFlavorUnits[field.key])}
+              onChange={(next) => setFlavorAdUnit(field.key, next)}
+            />
+          ))}
         </FieldGrid>
       </Panel>
     </div>
