@@ -3,7 +3,21 @@ import { Download, QrCode, ShieldCheck, Sparkles } from 'lucide-react';
 import { sfx } from '../services/soundEffects';
 
 export const DownloadSection: React.FC = () => {
-  const PLAY_STORE_URL = 'https://play.google.com/store/apps/details?id=com.unogame.uno_flutter';
+  const PLAY_STORE_URL = 'https://play.google.com/store/apps/details?id=com.tanoxcards.game';
+  const EDITION_LINKS = [
+    {
+      label: 'Tanox Offline',
+      url: 'https://play.google.com/store/apps/details?id=com.tanoxcards.offline',
+    },
+    {
+      label: 'Tanox 7-0 Cards',
+      url: 'https://play.google.com/store/apps/details?id=com.tanoxcards.sevenzero',
+    },
+    {
+      label: 'Tanox Stacking',
+      url: 'https://play.google.com/store/apps/details?id=com.tanoxcards.stacking',
+    },
+  ];
 
   return (
     <section id="download" className="w-full py-24 px-4 sm:px-6 relative z-10">
@@ -21,11 +35,11 @@ export const DownloadSection: React.FC = () => {
 
             <h2 className="text-4xl sm:text-5xl md:text-6xl font-black italic tracking-tight text-white leading-tight">
               READY TO PLAY? <br />
-              <span className="text-uno-yellow uppercase">GET UNO.MOBILE NOW</span>
+              <span className="text-uno-yellow uppercase">GET TANOX CARDS NOW</span>
             </h2>
 
             <p className="text-gray-300 text-lg font-medium leading-relaxed max-w-xl mx-auto lg:mx-0">
-              Download the official release on your phone or tablet. Experience instant matchmaking, custom 7-0 rules, stacking penalties, and lifetime UNO Pass rewards.
+              Download the official release on your phone or tablet. Experience instant matchmaking, custom 7-0 rules, stacking penalties, and lifetime Tanox Pass rewards.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start items-center pt-2">
@@ -44,6 +58,21 @@ export const DownloadSection: React.FC = () => {
                 <ShieldCheck size={20} className="text-uno-green" />
                 <span>Verified Clean & Secure</span>
               </div>
+            </div>
+
+            <div className="flex flex-wrap gap-2 justify-center lg:justify-start pt-1">
+              {EDITION_LINKS.map((edition) => (
+                <a
+                  key={edition.label}
+                  href={edition.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => sfx.playCardClick()}
+                  className="px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-bold text-gray-300 hover:text-white transition-all"
+                >
+                  {edition.label} →
+                </a>
+              ))}
             </div>
 
             <div className="grid grid-cols-3 gap-4 pt-6 border-t border-white/10 max-w-md mx-auto lg:mx-0">
