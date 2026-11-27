@@ -253,6 +253,17 @@ export function saveConfig(id: string, settings: unknown) {
   });
 }
 
+export interface AdminBroadcast {
+  id: string;
+  title: string;
+  body: string;
+  style?: 'popup' | 'banner';
+  topic?: string;
+  persistent?: boolean;
+  active?: boolean;
+  createdAt?: string;
+}
+
 export function sendNotification(payload: {
   title: string;
   body: string;
@@ -260,10 +271,22 @@ export function sendNotification(payload: {
   inApp?: boolean;
   push?: boolean;
   inAppStyle?: 'popup' | 'banner';
+  persistent?: boolean;
 }) {
-  return requestJson<{ ok: boolean; targetUserCount: number; tokenCount: number; successCount: number; failureCount: number }>('/api/admin/notifications/send', {
+  return requestJson<{ ok: boolean; targetUserCount: number; tokenCount: number; successCount: number; failureCount: number; broadcastId?: string | null; persistent?: boolean }>('/api/admin/notifications/send', {
     method: 'POST',
     body: JSON.stringify(payload),
+  });
+}
+
+export function listAdminBroadcasts(limit = 25) {
+  return requestJson<{ ok: boolean; broadcasts: AdminBroadcast[] }>(`/api/admin/broadcasts?limit=${limit}`);
+}
+
+export function updateAdminBroadcast(id: string, patch: { active?: boolean; persistent?: boolean }) {
+  return requestJson<{ ok: boolean; broadcast: AdminBroadcast }>(`/api/admin/broadcasts/${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    body: JSON.stringify(patch),
   });
 }
 

@@ -3,14 +3,17 @@ import { Bell, CheckCircle2, ChevronDown, FileJson, Plus, RefreshCw, Save, Send,
 import {
   getConfig,
   getSeasons,
+  listAdminBroadcasts,
   listConfigs,
   runPassSeasonTransition,
   saveConfig,
   saveSeason,
   seedPassSeasons,
   sendNotification,
+  updateAdminBroadcast,
   getBots,
   triggerBotSeeding,
+  type AdminBroadcast,
   type AdminBotProfile,
   type AdminConfigSummary,
   type AdminSeason,
@@ -51,7 +54,8 @@ const Settings: React.FC = () => {
   const [seasons, setSeasons] = useState<AdminSeason[]>([]);
   const [selectedSeason, setSelectedSeason] = useState(0);
   const [seasonWarnings, setSeasonWarnings] = useState<ConfigMap[]>([]);
-  const [notification, setNotification] = useState({ title: '', body: '', targetEmails: '', inApp: true, push: true, inAppStyle: 'popup' as 'popup' | 'banner' });
+  const [notification, setNotification] = useState({ title: '', body: '', targetEmails: '', inApp: true, push: true, inAppStyle: 'popup' as 'popup' | 'banner', persistent: false });
+  const [broadcasts, setBroadcasts] = useState<AdminBroadcast[]>([]);
   const [bots, setBots] = useState<AdminBotProfile[]>([]);
 
   const loadList = useCallback(async () => {
@@ -93,6 +97,15 @@ const Settings: React.FC = () => {
     }
   }, []);
 
+  const loadBroadcasts = useCallback(async () => {
+    try {
+      const response = await listAdminBroadcasts(25);
+      setBroadcasts(response.broadcasts || []);
+    } catch {
+      setBroadcasts([]);
+    }
+  }, []);
+
   useEffect(() => {
     void loadConfig(selectedId);
   }, [loadConfig, selectedId]);
@@ -100,7 +113,8 @@ const Settings: React.FC = () => {
   useEffect(() => {
     void loadSeasons();
     void loadBots();
-  }, [loadSeasons, loadBots]);
+    void loadBroadcasts();
+  }, [loadSeasons, loadBots, loadBroadcasts]);
 
   const updateSettings = (next: ConfigMap) => {
     setSettings(next);
@@ -135,10 +149,25 @@ const Settings: React.FC = () => {
     setMessage('');
     try {
       const result = await sendNotification(notification);
-      setMessage(`Notification queued for ${result.targetUserCount} users, ${result.successCount} push successes.`);
+      setMessage(
+        `Notification queued for ${result.targetUserCount} users, ${result.successCount} push successes${result.persistent ? ' (pinned on launch)' : ''}.`
+      );
       setNotification((current) => ({ ...current, title: '', body: '' }));
+      await loadBroadcasts();
     } catch (err) {
       setMessage(err instanceof Error ? err.message : 'Notification failed.');
+    }
+  };
+
+  const toggleBroadcastActive = async (broadcast: AdminBroadcast) => {
+    setMessage('');
+    try {
+      const nextActive = broadcast.active === false;
+      await updateAdminBroadcast(broadcast.id, { active: nextActive });
+      await loadBroadcasts();
+      setMessage(nextActive ? 'Pinned broadcast re-enabled.' : 'Broadcast disabled.');
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : 'Broadcast update failed.');
     }
   };
 
@@ -262,7 +291,13 @@ const Settings: React.FC = () => {
       </div>
 
       <div className="grid gap-6 xl:grid-cols-2">
-        <NotificationPanel notification={notification} setNotification={setNotification} sendCurrentNotification={sendCurrentNotification} />
+        <NotificationPanel
+          notification={notification}
+          setNotification={setNotification}
+          sendCurrentNotification={sendCurrentNotification}
+          broadcasts={broadcasts}
+          toggleBroadcastActive={toggleBroadcastActive}
+        />
         <section className="rounded-lg border border-white/10 bg-white/[0.03] p-5">
           <h2 className="mb-4 flex items-center gap-2 text-lg font-black"><Sparkles className="text-uno-blue" /> UNO Pass Seasons</h2>
             <SeasonEditor
@@ -356,6 +391,15 @@ function GameSettingsEditor({ value, onChange }: EditorProps) {
 }
 
 const APP_FLAVORS = ['standard', 'offline', 'sevenzero', 'stacking'] as const;
+
+const ADMOB_PUBLISHER_ID = 'pub-6672397151736824';
+
+const FLAVOR_ADMOB_APP_IDS: Record<(typeof APP_FLAVORS)[number], { packageName: string; appId: string }> = {
+  standard: { packageName: 'com.tanoxcards.game', appId: 'ca-app-pub-6672397151736824~4470060791' },
+  offline: { packageName: 'com.tanoxcards.offline', appId: 'ca-app-pub-6672397151736824~7440169911' },
+  sevenzero: { packageName: 'com.tanoxcards.sevenzero', appId: 'ca-app-pub-6672397151736824~7022871519' },
+  stacking: { packageName: 'com.tanoxcards.stacking', appId: 'ca-app-pub-6672397151736824~5089428035' },
+};
 
 const AD_UNIT_FIELDS: ReadonlyArray<{ key: string; label: string }> = [
   { key: 'homeBannerAdUnitId', label: 'Home Banner Ad Unit ID' },
@@ -568,7 +612,7 @@ function AdSettingsEditor({ value, onChange }: EditorProps) {
       </Panel>
       <Panel title="AdMob Ad Unit IDs (Default / All Flavors)">
         <p className="mb-3 text-xs text-gray-400">
-          Ad Unit IDs update live without a Play Store release. Unit IDs must belong to the AdMob App ID configured in each flavor&apos;s AndroidManifest/build.gradle.kts.
+          Publisher ID: <span className="font-mono text-gray-200">{ADMOB_PUBLISHER_ID}</span>. Ad Unit IDs update live without a Play Store release. Unit IDs must belong to the AdMob App ID configured in each flavor&apos;s AndroidManifest/build.gradle.kts.
         </p>
         <FieldGrid>
           {AD_UNIT_FIELDS.map((field) => (
@@ -583,7 +627,12 @@ function AdSettingsEditor({ value, onChange }: EditorProps) {
       </Panel>
       <Panel title="Per-Flavor Ad Unit Overrides">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <span className="text-xs text-gray-400">Override specific Ad Unit IDs for one flavor (leave blank to inherit Default above).</span>
+          <div className="space-y-0.5">
+            <span className="block text-xs text-gray-400">Override specific Ad Unit IDs for one flavor (leave blank to inherit Default above).</span>
+            <span className="block text-[11px] font-mono text-gray-300">
+              {FLAVOR_ADMOB_APP_IDS[selectedFlavor].packageName} • App ID: {FLAVOR_ADMOB_APP_IDS[selectedFlavor].appId}
+            </span>
+          </div>
           <div className="flex flex-wrap gap-1.5">
             {APP_FLAVORS.map((flavor) => (
               <button
@@ -1042,11 +1091,25 @@ function SeasonEditor({ seasons, selectedSeason, setSelectedSeason, setSeasons, 
   );
 }
 
-function NotificationPanel({ notification, setNotification, sendCurrentNotification }: {
-  notification: { title: string; body: string; targetEmails: string; inApp: boolean; push: boolean; inAppStyle: 'popup' | 'banner' };
-  setNotification: React.Dispatch<React.SetStateAction<{ title: string; body: string; targetEmails: string; inApp: boolean; push: boolean; inAppStyle: 'popup' | 'banner' }>>;
+type NotificationFormState = {
+  title: string;
+  body: string;
+  targetEmails: string;
+  inApp: boolean;
+  push: boolean;
+  inAppStyle: 'popup' | 'banner';
+  persistent: boolean;
+};
+
+function NotificationPanel({ notification, setNotification, sendCurrentNotification, broadcasts, toggleBroadcastActive }: {
+  notification: NotificationFormState;
+  setNotification: React.Dispatch<React.SetStateAction<NotificationFormState>>;
   sendCurrentNotification: () => Promise<void>;
+  broadcasts: AdminBroadcast[];
+  toggleBroadcastActive: (broadcast: AdminBroadcast) => Promise<void>;
 }) {
+  const pinnedOrRecent = broadcasts.filter((item) => item.persistent).slice(0, 6);
+
   return (
     <section className="rounded-lg border border-white/10 bg-white/[0.03] p-5">
       <h2 className="mb-4 flex items-center gap-2 text-lg font-black"><Bell className="text-uno-yellow" /> Broadcast Notification</h2>
@@ -1057,14 +1120,49 @@ function NotificationPanel({ notification, setNotification, sendCurrentNotificat
         <div className="flex flex-wrap gap-3 text-sm font-bold text-gray-300">
           <Toggle label="In-app" checked={notification.inApp} onChange={(next) => setNotification((current) => ({ ...current, inApp: next }))} />
           <Toggle label="Push" checked={notification.push} onChange={(next) => setNotification((current) => ({ ...current, push: next }))} />
+          <Toggle label="Pin on every app launch" checked={notification.persistent} onChange={(next) => setNotification((current) => ({ ...current, persistent: next }))} />
           <select value={notification.inAppStyle} onChange={(event) => setNotification((current) => ({ ...current, inAppStyle: event.target.value as 'popup' | 'banner' }))} className="rounded bg-white/5 px-3 py-2">
             <option value="popup">Popup</option>
             <option value="banner">Banner</option>
           </select>
         </div>
+        {notification.persistent && (
+          <p className="text-xs text-amber-300/90">
+            Pinned mode shows this in-app popup once per app launch (even if the user opens the app later) until you disable it below.
+          </p>
+        )}
         <button onClick={() => void sendCurrentNotification()} className="inline-flex items-center gap-2 rounded-lg bg-uno-yellow px-4 py-3 text-xs font-black uppercase tracking-widest text-black">
           <Send size={16} /> Send Notification
         </button>
+
+        {pinnedOrRecent.length > 0 && (
+          <div className="mt-4 space-y-2 border-t border-white/10 pt-4">
+            <h3 className="text-xs font-black uppercase tracking-widest text-gray-400">Pinned Launch Broadcasts</h3>
+            {pinnedOrRecent.map((item) => {
+              const isActive = item.active !== false;
+              return (
+                <div key={item.id} className="flex items-start justify-between gap-3 rounded-lg border border-white/10 bg-black/25 p-3 text-xs">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-white truncate">{item.title}</span>
+                      <span className={`rounded px-1.5 py-0.5 text-[10px] font-black uppercase ${isActive ? 'bg-uno-green/20 text-uno-green' : 'bg-white/10 text-gray-400'}`}>
+                        {isActive ? 'Active' : 'Disabled'}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-gray-400 break-words">{item.body}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => void toggleBroadcastActive(item)}
+                    className={`shrink-0 rounded px-2.5 py-1.5 text-[10px] font-black uppercase tracking-wider ${isActive ? 'bg-red-500/20 text-red-300 hover:bg-red-500/30' : 'bg-uno-green/20 text-uno-green hover:bg-uno-green/30'}`}
+                  >
+                    {isActive ? 'Disable' : 'Enable'}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </section>
   );
