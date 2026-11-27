@@ -5,6 +5,58 @@
     ],
     "target": {
       "namespace": "android_app",
+      "package_name": "com.tanoxcards.game",
+      "sha256_cert_fingerprints": [
+        "19:AE:0F:47:A9:EE:6B:22:F4:7E:A7:85:47:05:1C:73:14:73:B1:A6:9E:BC:2C:DD:DF:C1:DD:C8:EE:FB:B0:07",
+        "2B:D3:EE:4D:E6:9E:06:2F:7B:5B:44:AB:A0:15:D7:C9:BF:7B:20:60:F4:F2:B1:B6:53:E5:20:A6:B0:50:D7:78"
+      ]
+    }
+  },
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.tanoxcards.offline",
+      "sha256_cert_fingerprints": [
+        "19:AE:0F:47:A9:EE:6B:22:F4:7E:A7:85:47:05:1C:73:14:73:B1:A6:9E:BC:2C:DD:DF:C1:DD:C8:EE:FB:B0:07",
+        "2B:D3:EE:4D:E6:9E:06:2F:7B:5B:44:AB:A0:15:D7:C9:BF:7B:20:60:F4:F2:B1:B6:53:E5:20:A6:B0:50:D7:78"
+      ]
+    }
+  },
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.tanoxcards.sevenzero",
+      "sha256_cert_fingerprints": [
+        "19:AE:0F:47:A9:EE:6B:22:F4:7E:A7:85:47:05:1C:73:14:73:B1:A6:9E:BC:2C:DD:DF:C1:DD:C8:EE:FB:B0:07",
+        "2B:D3:EE:4D:E6:9E:06:2F:7B:5B:44:AB:A0:15:D7:C9:BF:7B:20:60:F4:F2:B1:B6:53:E5:20:A6:B0:50:D7:78"
+      ]
+    }
+  },
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.tanoxcards.stacking",
+      "sha256_cert_fingerprints": [
+        "19:AE:0F:47:A9:EE:6B:22:F4:7E:A7:85:47:05:1C:73:14:73:B1:A6:9E:BC:2C:DD:DF:C1:DD:C8:EE:FB:B0:07",
+        "2B:D3:EE:4D:E6:9E:06:2F:7B:5B:44:AB:A0:15:D7:C9:BF:7B:20:60:F4:F2:B1:B6:53:E5:20:A6:B0:50:D7:78"
+      ]
+    }
+  },
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
       "package_name": "com.unogame.uno_flutter",
       "sha256_cert_fingerprints": [
         "2B:D3:EE:4D:E6:9E:06:2F:7B:5B:44:AB:A0:15:D7:C9:BF:7B:20:60:F4:F2:B1:B6:53:E5:20:A6:B0:50:D7:78"
